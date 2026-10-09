@@ -5,32 +5,43 @@ import type { OcrLine } from './parseReceipt'
 const asset = (path: string) =>
   new URL(`${import.meta.env.BASE_URL}tesseract/${path}`, location.href).href
 
+/** The OCR engine (worker, WASM core, or language data) couldn't be downloaded or started. */
+export class OcrLoadError extends Error {}
+
 let worker: Promise<Worker> | null = null
 let onProgress: ((p: number) => void) | null = null
 
 /** Lazily creates one Tesseract worker per session; the library is only loaded on first scan. */
 function getWorker(): Promise<Worker> {
   worker ??= (async () => {
-    const { createWorker, PSM } = await import('tesseract.js')
-    const w = await createWorker('eng', 1, {
-      workerPath: asset('worker.min.js'),
-      corePath: asset('core'),
-      langPath: asset('lang'),
-      gzip: true,
-      logger: (m) => {
-        // Loading counts for the first 30% of the bar, recognition for the rest.
-        if (m.status === 'recognizing text') onProgress?.(0.3 + m.progress * 0.7)
-        else onProgress?.(Math.min(0.3, m.progress * 0.3))
-      },
-    })
-    await w.setParameters({
-      tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
-      preserve_interword_spaces: '1',
-    })
-    return w
+    try {
+      return await startWorker()
+    } catch (e) {
+      throw new OcrLoadError(String(e))
+    }
   })()
   worker.catch(() => (worker = null))
   return worker
+}
+
+async function startWorker(): Promise<Worker> {
+  const { createWorker, PSM } = await import('tesseract.js')
+  const w = await createWorker('eng', 1, {
+    workerPath: asset('worker.min.js'),
+    corePath: asset('core'),
+    langPath: asset('lang'),
+    gzip: true,
+    logger: (m) => {
+      // Loading counts for the first 30% of the bar, recognition for the rest.
+      if (m.status === 'recognizing text') onProgress?.(0.3 + m.progress * 0.7)
+      else onProgress?.(Math.min(0.3, m.progress * 0.3))
+    },
+  })
+  await w.setParameters({
+    tessedit_pageseg_mode: PSM.SINGLE_BLOCK,
+    preserve_interword_spaces: '1',
+  })
+  return w
 }
 
 /** Reads text lines (with confidence and left edge) from a prepared canvas. */

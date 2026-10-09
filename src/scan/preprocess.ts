@@ -21,6 +21,17 @@ export async function loadImage(file: Blob): Promise<ImageBitmap> {
   }
 }
 
+/**
+ * 2D context with high-quality resampling. The browser default ("low") blurred digits
+ * enough for OCR to read a receipt's "27.35" as "21.35"; "high" reads it correctly.
+ */
+function smoothContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = canvas.getContext('2d')!
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  return ctx
+}
+
 /** Returns the image rotated by `rotation`, scaled so its long edge is at most `maxLong`. */
 export function rotateImage(
   image: CanvasImageSource & { width: number; height: number },
@@ -34,7 +45,7 @@ export function rotateImage(
   const canvas = document.createElement('canvas')
   canvas.width = sideways ? h : w
   canvas.height = sideways ? w : h
-  const ctx = canvas.getContext('2d')!
+  const ctx = smoothContext(canvas)
   ctx.translate(canvas.width / 2, canvas.height / 2)
   ctx.rotate((rotation * Math.PI) / 180)
   ctx.drawImage(image, -w / 2, -h / 2, w, h)
@@ -55,7 +66,7 @@ function render(
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(sw * scale)
   canvas.height = Math.round(sh * scale)
-  const ctx = canvas.getContext('2d')!
+  const ctx = smoothContext(canvas)
   ctx.fillStyle = '#fff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)

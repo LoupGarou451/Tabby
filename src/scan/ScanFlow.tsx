@@ -3,7 +3,7 @@ import { Button } from '../components/ui'
 import { useBill } from '../store/billStore'
 import { useUi, type ScanRequest } from '../store/uiStore'
 import { CropView } from './CropView'
-import { cancelOcr, recognizeLines } from './ocr'
+import { cancelOcr, OcrLoadError, recognizeLines } from './ocr'
 import { parseReceipt, type ReceiptDraft } from './parseReceipt'
 import { loadImage, preprocess, rotateImage, type Crop, type Rotation } from './preprocess'
 import { ReviewScreen } from './ReviewScreen'
@@ -71,7 +71,13 @@ function Flow({ request }: { request: ScanRequest }) {
     } catch (e) {
       if (!cancelled.current) {
         console.error('[tabby] scan failed', e)
-        setPhase({ name: 'error', message: 'Something went wrong reading that photo' })
+        setPhase({
+          name: 'error',
+          message:
+            e instanceof OcrLoadError
+              ? "Couldn't load the receipt reader. Check your connection (or that the dev server is still running) and reload the page."
+              : 'Something went wrong reading that photo',
+        })
       }
     }
   }
