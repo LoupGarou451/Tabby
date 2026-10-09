@@ -10,12 +10,7 @@ export function Logo({ size = 32, className }: { size?: number; className?: stri
       role="img"
       aria-label="Tabby"
     >
-      <g
-        stroke="var(--logo-ink)"
-        strokeWidth={4}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
+      <g stroke="var(--logo-ink)" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
         <path fill="var(--logo-orange)" d="M22 104V58L17 12l31 21q16-5 32 0l31-21-5 46v46" />
         <path
           fill="var(--logo-paper)"
