@@ -790,6 +790,9 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-08 | Lint with **oxlint** (the current `create-vite` react-ts default) instead of ESLint; Prettier kept for formatting. TypeScript is the template's pinned version (~6.0). | Follow the official template; faster, zero config. |
 | 2026-10-08 | Logo ink stays dark (`#2B2118`) in dark mode; only the page background changes. | The ink sits on the logo's own orange and paper fills, so a light ink would lose contrast. |
 | 2026-10-08 | `npm test` runs `vitest run --passWithNoTests`. | Keeps M0 green before tests exist; harmless afterwards. |
+| 2026-10-08 | Current bill and history persist together under one key, `tabby:bill` (`{ bill, history }`), instead of separate `tabby:bill` / `tabby:history` keys. | One Zustand store, one `persist`; both are still Zod-validated on load. |
+| 2026-10-08 | "Recent names" come from a most-recent-first list of typed names (max 20, 8 shown), not strictly "the last 5 bills". Guests and sample people aren't remembered. | Simpler, and better matches who you actually eat with. |
+| 2026-10-08 | Duplicate names get their suffix when added ("Sam (2)"), stored in the name. | Keeps every label (chips, summary, share text) consistent without extra logic. |
 
 ---
 
