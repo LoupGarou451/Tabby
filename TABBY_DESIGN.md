@@ -666,7 +666,7 @@ Subtotal 162.50 · Tax 14.42 (8.875%) · Printed total 176.92 · Currency USD.
 ```
 Tabby/
 ├── TABBY_DESIGN.md          ← this document
-├── README.md                ← getting started, screenshots, features, AI-tools note, "another hour"
+├── README.md                ← how to run locally, feature overview, tech stack
 ├── LICENSE                  ← MIT, Copyright (c) 2026 Jeff Fulton
 ├── .github/workflows/
 │   └── deploy.yml           ← test + build + deploy to GitHub Pages on push to main
@@ -677,7 +677,7 @@ Tabby/
 ├── public/
 │   ├── logo.svg             ← touch icon
 │   └── favicon.svg          ← logo without whiskers (legible at 16–32 px)
-├── docs/screenshots/        ← README screenshots
+├── docs/screenshots/        ← app screenshots (for the submission)
 ├── src/
 │   ├── main.tsx
 │   ├── index.css            ← Tailwind v4 import, theme tokens (light/dark), base layer
@@ -816,6 +816,7 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | README simplified to: run locally, feature overview, tech stack and what each piece is for. The AI-usage note and "what I'd do with another hour" go in the submission message instead. | User request for a simple README. |
 | 2026-10-09 | Scan review gets **+ Add item** for entering items the scan missed. | User report: when the review showed a discrepancy, there was no way to add the missing entries manually (only the lump-sum "Unlisted item" fix). |
 | 2026-10-09 | Removed the Summary's "Receipt says $X — difference · Fix" warning and the manual "Printed total" field that fed it. | User report: a receipt with no printed tax showed "Receipt says $27.35 before tip — $4.10 difference" after the user correctly added $4.10 tax. The comparison can't tell user-added tax/gratuity from a missing item; item reconciliation stays on the scan review screen. |
 | 2026-10-09 | Step validation (D22): Next and later step dots are disabled until the current step has the minimum data for final totals. One person is enough (a bill for one is still calculable). | User report: it was possible to reach later steps with no items. |
