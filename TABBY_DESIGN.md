@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved for implementation — build **all** milestones (M0–M7). No open questions. |
+| **Status** | **Implemented** — milestones M0–M7 complete (see `git log`). No open questions. |
 | **Live app** | `https://loupgarou451.github.io/Tabby/` (deployed automatically from `main` once M0 is pushed; section 10.2) |
 | **Source brief** | *Take-Home Project: Split the Bill* — reproduced in full in Appendix A |
 | **Repo** | `https://github.com/LoupGarou451/Tabby` (public) |
@@ -19,7 +19,7 @@
 This document is the **single source of truth** for Tabby. A developer or AI session with no other context should be able to build the whole app from it. Everything needed is here, including the original brief (Appendix A).
 
 ### 0.1 Current repo state
-Implementation is in progress. Check `git log` (commits are prefixed `M0:`, `M1:`, …) to see which milestones are done, and continue with the next one in section 13.
+All milestones (M0–M7) are implemented; commits are prefixed `M0:` … `M7:`. Further work should follow the same rules: update this spec first, then build, and log decisions in section 16.
 
 ### 0.2 Working rules for implementers
 1. **Build milestones in order** (M0 → M7). Each milestone must leave the app working end to end.
@@ -796,6 +796,8 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | First-run hints render inline above their target (with an arrow) rather than as floating overlays. | Never covers content, no positioning code, works at any width. |
+| 2026-10-09 | `Button` renders a leading emoji in its own `aria-hidden` span. | Chrome dropped the space after some emoji, and screen readers shouldn't announce decorative icons. |
 | 2026-10-09 | The scan progress bar eases forward on a timer during recognition. | Tesseract only reports recognition progress at 0% and 100%. |
 | 2026-10-09 | `tesseract.js-core` must be the **same major as `tesseract.js`** (7). npm's `latest` tag for core still pointed at 6.x, which lacks the `relaxedsimd` build v7 loads. | Found in browser testing; pinned `^7.0.0`. |
 | 2026-10-08 | Duplicate names get their suffix when added ("Sam (2)"), stored in the name. | Keeps every label (chips, summary, share text) consistent without extra logic. |
@@ -804,13 +806,13 @@ Implementers append here any decision made where this spec was silent (date · d
 
 ## 17. Submission Checklist (from the brief)
 
-- [ ] Public GitHub repo link
-- [ ] Screen recording or screenshots of the full flow (manual *and* scan, on a phone-sized viewport)
-- [ ] A few sentences on "what I'd do with another hour" (draw from 10.14)
-- [ ] Note on AI tools used and how (Claude Code for all implementation; no AI or paid services inside the app)
+- [x] Public GitHub repo link
+- [x] Screenshots of the full flow (manual *and* scan, phone-sized) — `docs/screenshots/`, shown in the README. A screen recording is still to be made by the submitter.
+- [x] A few sentences on "what I'd do with another hour" (README)
+- [x] Note on AI tools used and how (README)
 - [ ] **Zero-setup check:** fresh `git clone` into an empty folder → `npm install && npm run dev` → the full flow works, *including receipt scanning*, with no other steps, no `.env`, and no warnings asking for configuration
-- [ ] README's "Getting started" is exactly those commands, with nothing else required
-- [ ] `npm run build`, `npm test`, `npm run lint` all pass
+- [x] README's "Getting started" is exactly those commands, with nothing else required
+- [x] `npm run build`, `npm test`, `npm run lint` all pass
 
 ---
 

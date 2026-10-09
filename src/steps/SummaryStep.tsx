@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Avatar, Button, Card, EmptyState, Segmented, Switch } from '../components/ui'
+import { Hint } from '../components/Hint'
 import { cx } from '../lib/cx'
 import { formatMoney } from '../lib/money'
 import { computeSplit, type PersonSplit } from '../lib/split'
@@ -144,6 +145,7 @@ export function SummaryStep() {
       </div>
 
       <div className="flex flex-col gap-2">
+        <Hint id="share" />
         <Button variant="primary" className="min-h-12 text-base" onClick={() => openSheet('share')}>
           🔗 Share link &amp; QR code
         </Button>

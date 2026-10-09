@@ -21,11 +21,16 @@ const variants: Record<Variant, string> = {
   danger: 'text-bad hover:bg-surface-2',
 }
 
+const LEADING_EMOJI = /^(\p{Extended_Pictographic}\uFE0F?)\s+(.*)$/su
+
 export function Button({
   variant = 'secondary',
   className,
+  children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+  // "📷 Take photo" → icon + label, so the gap spaces them evenly and screen readers skip the icon.
+  const m = typeof children === 'string' ? children.match(LEADING_EMOJI) : null
   return (
     <button
       type="button"
@@ -35,7 +40,16 @@ export function Button({
         className,
       )}
       {...props}
-    />
+    >
+      {m ? (
+        <>
+          <span aria-hidden="true">{m[1]}</span>
+          <span>{m[2]}</span>
+        </>
+      ) : (
+        children
+      )}
+    </button>
   )
 }
 

@@ -15,6 +15,7 @@
   --good: #23855a;
   --warn: #b7791f;
   --bad: #c2413b;
+  --ink-accent: #f59a3f; /* accent on ink-coloured surfaces (snackbar, hints) */
 
   --logo-orange: #f28c28;
   --logo-ink: #2b2118;
@@ -35,6 +36,7 @@
   --good: #4cc38a;
   --warn: #e3a83c;
   --bad: #ef6b63;
+  --ink-accent: #a34f05;
   color-scheme: dark;
 }
 
@@ -51,6 +53,7 @@
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
+  --color-ink-accent: var(--ink-accent);
   --font-rounded: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
 }
 
@@ -84,5 +87,15 @@
   *::after {
     animation-duration: 1ms !important;
     transition-duration: 1ms !important;
+  }
+}
+
+.hint-in {
+  animation: hint-in 250ms ease-out both;
+}
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
 }

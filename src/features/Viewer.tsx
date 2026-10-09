@@ -48,7 +48,9 @@ export function Viewer({ hash, onExit }: { hash: string; onExit: () => void }) {
         </p>
       </div>
 
-      {!mine ? (
+      {split.people.length === 0 ? (
+        <p className="text-center text-muted">Nobody has been added to this bill yet.</p>
+      ) : !mine ? (
         <div className="flex flex-col items-center gap-3">
           <h2 className="font-semibold">Who are you?</h2>
           <div className="flex flex-wrap justify-center gap-2">

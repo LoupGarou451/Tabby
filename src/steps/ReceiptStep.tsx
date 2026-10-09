@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Hint } from '../components/Hint'
 import { Button, Card, MoneyInput } from '../components/ui'
 import { cx } from '../lib/cx'
 import { formatMoney, formatPlain, type Money } from '../lib/money'
@@ -71,6 +72,7 @@ function ChooseInput() {
         <h2 className="text-2xl font-bold">What's on the receipt?</h2>
         <p className="text-muted">Pick how you'd like to add items.</p>
       </div>
+      <Hint id="choose-input" />
       <div className="grid grid-cols-2 gap-3">
         {lastMethod === 'scan' ? [scan, manual] : [manual, scan]}
       </div>

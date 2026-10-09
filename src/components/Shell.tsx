@@ -151,7 +151,11 @@ export function Snackbar() {
       className="fixed inset-x-3 bottom-28 z-20 mx-auto flex max-w-[456px] items-center justify-between gap-3 rounded-2xl bg-ink px-4 py-2 text-bg shadow-lg"
     >
       <span className="text-sm">{undo.message}</span>
-      <button type="button" onClick={applyUndo} className="min-h-10 px-2 font-semibold text-brand">
+      <button
+        type="button"
+        onClick={applyUndo}
+        className="min-h-10 px-2 font-semibold text-ink-accent"
+      >
         Undo
       </button>
     </div>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Avatar, Button, Card, EmptyState, PersonChip, Segmented, Sheet } from '../components/ui'
+import { Hint } from '../components/Hint'
 import { cx } from '../lib/cx'
 import { allocate, formatMoney } from '../lib/money'
 import type { Item, Person } from '../lib/types'
@@ -64,6 +65,7 @@ export function AssignStep() {
         )}
       </div>
 
+      {view === 'item' && <Hint id="tap-chips" />}
       {view === 'item' ? (
         items.map((item) => (
           <ItemCard
