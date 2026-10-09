@@ -7,7 +7,7 @@
 | **Status** | Design — pre-implementation (awaiting review) |
 | **Source brief** | *Take-Home Project: Split the Bill* (`~/Downloads/Take-Home_Project__Split_the_Bill.pdf`) |
 | **Repo** | `github.com/LoupGarou451/Tabby` |
-| **Run** | `npm install && npm run dev` (hard requirement from the brief) |
+| **Run** | `git clone` → `npm install && npm run dev` — **zero setup, nothing else required** (section 1.3) |
 | **Last updated** | 2026-10-08 |
 
 ---
@@ -32,7 +32,21 @@
    - "could you actually use this at dinner?"
 
 ### 1.3 Constraints
-- **No API keys, no paid services, no third-party accounts.** Every feature runs on free, open-source libraries bundled with the app. Anyone can clone and run it with zero configuration.
+- **Zero setup.** The *only* thing a user does is:
+  ```bash
+  git clone https://github.com/LoupGarou451/Tabby.git
+  cd Tabby
+  npm install && npm run dev
+  ```
+  Every feature, including receipt scanning, must then work with nothing else. Specifically, the project must **not** require:
+  - `.env` files, environment variables, or config edits,
+  - API keys, tokens, sign-ups, or accounts,
+  - globally installed tools (beyond Node.js + npm) or system packages,
+  - manual download steps (e.g. OCR language data), or extra scripts like `npm run setup`,
+  - `postinstall` scripts that fetch files from the internet.
+
+  Everything the app needs is either a regular npm dependency (installed by `npm install`) or committed to the repo. The only prerequisite is a current Node.js LTS (≥ 20), declared in `package.json` `engines` and in the README.
+- **No API keys, no paid services, no third-party accounts.** Every feature runs on free, open-source libraries bundled with the app.
 - **No backend.** All state lives in the browser.
 - **Works offline** once loaded, including receipt scanning (OCR assets are self-hosted; see 7.3).
 
@@ -293,7 +307,13 @@ Pick/take photo ─▶ Crop & straighten ─▶ Preprocess ─▶ OCR (Web Worke
 On-device OCR is good, not perfect. Crumpled, faded, or angled receipts will need some edits. The design handles this with crop, contrast cleanup, low-confidence highlighting, and reconciliation, so the review step is quick rather than frustrating. Manual entry stays one tap away at every point.
 
 ### 7.3 Offline & self-hosting
-By default, tesseract.js downloads its worker, WASM core, and language data from a public CDN on first use. Tabby instead **copies those assets into `public/tesseract/`** at build time and points `workerPath`, `corePath`, and `langPath` there. That gives:
+By default, tesseract.js downloads its worker, WASM core, and language data from a public CDN on first use. Tabby instead serves them itself, and does it **without any setup step** (section 1.3):
+- The worker and WASM core come from the `tesseract.js` / `tesseract.js-core` npm packages. The English language data comes from the `@tesseract.js-data/eng` npm package. All three are ordinary dependencies, so `npm install` fetches them.
+- A small Vite plugin (`vite-plugin-static-copy`) serves those files from `node_modules` under `/tesseract/` in both `npm run dev` and `npm run build`. Nothing is copied by hand, and there are no `postinstall` scripts.
+- `ocr.ts` points `workerPath`, `corePath`, and `langPath` at `/tesseract/`.
+- If the language-data package ever proves unreliable, the fallback is to commit `eng.traineddata.gz` (~2 MB) directly into `public/tesseract/`. That still requires no setup.
+
+That gives:
 - no third-party network requests,
 - scanning that works offline after the first load,
 - about 2–4 MB of assets (English "fast" model), loaded **only** when the user first taps *Scan receipt*. The main bundle is unaffected.
@@ -444,4 +464,5 @@ Each milestone ends in a working app and a commit.
 - [ ] Screen recording or screenshots of the full flow (manual *and* scan)
 - [ ] A few sentences on "what I'd do with another hour" (draw from 8.10)
 - [ ] Note on AI tools used and how (Claude Code for all implementation; no AI or paid services inside the app)
-- [ ] Verified on a clean clone: `npm install && npm run dev`
+- [ ] **Zero-setup check:** fresh `git clone` into an empty folder → `npm install && npm run dev` → the full flow works, *including receipt scanning*, with no other steps, no `.env`, and no warnings asking for configuration
+- [ ] README's "Getting started" is exactly those commands, with nothing else required
