@@ -4,13 +4,13 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented** — milestones M0–M8 complete (see `git log`). No open questions. |
+| **Status** | **Implemented** — milestones M0–M9 complete (see `git log`). No open questions. |
 | **Live app** | `https://loupgarou451.github.io/Tabby/` (deployed automatically from `main` once M0 is pushed; section 10.2) |
 | **Source brief** | *Take-Home Project: Split the Bill* — reproduced in full in Appendix A |
 | **Repo** | `https://github.com/LoupGarou451/Tabby` (public) |
 | **License** | MIT — `Copyright (c) 2026 Jeff Fulton` |
 | **Run** | `git clone` → `npm install && npm run dev` — **zero setup, nothing else required** (section 1.3) |
-| **Last updated** | 2026-10-08 |
+| **Last updated** | 2026-10-09 |
 
 ---
 
@@ -19,7 +19,7 @@
 This document is the **single source of truth** for Tabby. A developer or AI session with no other context should be able to build the whole app from it. Everything needed is here, including the original brief (Appendix A).
 
 ### 0.1 Current repo state
-All milestones (M0–M8) are implemented; commits are prefixed `M0:` … `M8:`. Further work should follow the same rules: update this spec first, then build, and log decisions in section 16.
+All milestones (M0–M9) are implemented; commits for M0–M8 are prefixed `M0:` … `M8:`, and M9's changes are individual commits after M8. Further work should follow the same rules: update this spec first, then build, and log decisions in section 16.
 
 ### 0.2 Working rules for implementers
 1. **Build milestones in order** (M0 → M7). Each milestone must leave the app working end to end.
@@ -310,9 +310,9 @@ Everything is free and open source (MIT / Apache-2.0) and bundled. **No API keys
 | Share links | `lz-string` | 1 | `compressToEncodedURIComponent` |
 | QR codes | `qrcode` | 1 | Render to SVG string locally |
 | Tests | `vitest` | 5 | Unit tests for pure logic |
-| Lint / format | `eslint` (template config), `prettier` | latest | |
+| Lint / format | `oxlint` (the `create-vite` default; config in `.oxlintrc.json`), `prettier` | latest | |
 
-**`package.json` scripts**: `dev` (`vite`), `build` (`tsc -b && vite build`), `preview`, `test` (`vitest run`), `lint` (`eslint .`), `format` (`prettier --write .`).
+**`package.json` scripts**: `dev` (`vite`), `build` (`tsc -b && vite build`), `preview`, `test` (`vitest run`), `lint` (`oxlint`), `format` (`prettier --write .`).
 **`engines`**: `{ "node": ">=20" }`.
 **No router** — the steps are a single-page stepper. Shared links use the URL hash.
 
@@ -393,7 +393,7 @@ Persisted data is validated with Zod on load (a missing `splitMode` from older s
 
 Two Zustand stores: `useBill` (current bill + history) and `usePrefs`. Components call actions and never mutate state directly. They read derived numbers only from `computeSplit()` (memoized with `useMemo` on the bill).
 
-`useBill` actions: `newBill()`, `setSplitMode('fair'|'even')`, `setRoundUp(bool)`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
+`useBill` actions: `newBill()`, `setSplitMode('fair'|'even')`, `setRoundUp(bool)`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
 
 `newBill()` archives the current bill to history if it has at least one item, then starts a blank bill. The UI confirms first ("Start over?") whenever the bill has items or people; **Done — save to history** on the Summary calls it without a prompt, since that's the explicit end of the flow.
 
@@ -509,7 +509,7 @@ Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worke
    - If OCR finds no price lines at all: "We couldn't find any items on this receipt", with **Try again** / **Enter manually**.
 
 ### 9.2 Honest expectations
-On-device OCR is good, not perfect. Crumpled, faded, or angled receipts will need some edits. The design handles this with crop, contrast cleanup, low-confidence highlighting, and reconciliation, so the review step is quick rather than frustrating. Manual entry stays one tap away at every point.
+On-device OCR is good, not perfect. Crumpled, faded, or angled receipts will need some edits. The design handles this with crop, high-quality resizing, low-confidence highlighting, reconciliation, and **+ Add item** for anything missed, so the review step is quick rather than frustrating. Manual entry stays one tap away at every point.
 
 ### 9.3 Offline & self-hosting (zero setup)
 By default, tesseract.js downloads its worker, WASM core, and language data from a public CDN. Tabby serves them itself instead, **without any setup step**:
@@ -666,59 +666,83 @@ Subtotal 162.50 · Tax 14.42 (8.875%) · Printed total 176.92 · Currency USD.
 ```
 Tabby/
 ├── TABBY_DESIGN.md          ← this document
-├── README.md                ← getting started, features, screenshots, AI-tools note, "another hour", decision log link
+├── README.md                ← getting started, screenshots, features, AI-tools note, "another hour"
 ├── LICENSE                  ← MIT, Copyright (c) 2026 Jeff Fulton
 ├── .github/workflows/
-│   └── deploy.yml           ← build + deploy to GitHub Pages on push to main
-├── index.html               ← inline splash markup + early-hide script
+│   └── deploy.yml           ← test + build + deploy to GitHub Pages on push to main
+├── .oxlintrc.json           ← lint config
+├── index.html               ← inline splash markup + early theme/splash script
 ├── package.json
 ├── vite.config.ts           ← react, tailwind, OCR-asset plugin, base path, server.host, __LAN_HOST__
-├── eslint.config.js
 ├── public/
-│   └── logo.svg             ← favicon / touch icon
+│   ├── logo.svg             ← touch icon
+│   └── favicon.svg          ← logo without whiskers (legible at 16–32 px)
+├── docs/screenshots/        ← README screenshots
 ├── src/
 │   ├── main.tsx
-│   ├── index.css            ← Tailwind v4 import + @theme tokens
-│   ├── App.tsx              ← shell: header, step router, bottom bar, viewer switch
+│   ├── index.css            ← Tailwind v4 import, theme tokens (light/dark), base layer
+│   ├── vite-env.d.ts        ← __LAN_HOST__, __APP_VERSION__
+│   ├── App.tsx              ← shell: header, current step, bottom bar, sheets, Viewer switch
 │   ├── brand/
 │   │   ├── Logo.tsx
 │   │   └── useSplash.ts
 │   ├── steps/
-│   │   ├── ReceiptStep.tsx
+│   │   ├── ReceiptStep.tsx  ← input choice, item editor, receipt totals panel
 │   │   ├── PeopleStep.tsx
-│   │   ├── AssignStep.tsx
+│   │   ├── AssignStep.tsx   ← split method, assign tools, custom-shares sheet
 │   │   ├── TaxTipStep.tsx
 │   │   └── SummaryStep.tsx
 │   ├── features/
 │   │   ├── CurrencySheet.tsx
-│   │   ├── PassThePhone.tsx
-│   │   ├── ShareSheet.tsx
-│   │   ├── Viewer.tsx       ← read-only shared-link view
 │   │   ├── History.tsx
+│   │   ├── PassThePhone.tsx
+│   │   ├── PayButtons.tsx   ← payment links + payer handles form
 │   │   ├── Settings.tsx
+│   │   ├── ShareSheet.tsx   ← link + QR
+│   │   └── Viewer.tsx       ← read-only shared-link view
+│   ├── components/
+│   │   ├── ui.tsx           ← Button, Card, Avatar, PersonChip, MoneyInput, Sheet, Segmented, Switch, EmptyState
+│   │   ├── Shell.tsx        ← Header, BottomBar (step validation), Snackbar, Menu/About/Start-over sheets
+│   │   ├── AmountField.tsx  ← % / amount input
+│   │   ├── TipPicker.tsx    ← tip presets (with "Suggested"), custom tip, tip base
 │   │   └── Hint.tsx         ← first-run coach marks
-│   ├── components/          ← PersonChip, ItemCard, MoneyInput, Sheet, Snackbar, Meter, …
 │   ├── scan/
+│   │   ├── CaptureButtons.tsx ← Take photo / Upload image
+│   │   ├── scanHooks.ts     ← drag-and-drop and paste
+│   │   ├── ScanFlow.tsx     ← crop → OCR → review state machine
 │   │   ├── CropView.tsx
-│   │   ├── ReviewScreen.tsx
-│   │   ├── preprocess.ts
-│   │   ├── ocr.ts
-│   │   ├── parseReceipt.ts
-│   │   └── schema.ts
+│   │   ├── ReviewScreen.tsx ← editable list, + Add item, reconciliation
+│   │   ├── preprocess.ts    ← orient / rotate / crop / high-quality resize
+│   │   ├── ocr.ts           ← lazy tesseract.js worker, OcrLoadError
+│   │   ├── parseReceipt.ts  ← OCR lines → draft items + totals
+│   │   └── schema.ts        ← draft validation + toItems
 │   ├── lib/
 │   │   ├── money.ts         ← allocate(), parseMoney(), formatMoney(), minorDigits()
-│   │   ├── split.ts         ← computeSplit()
-│   │   ├── share.ts         ← encode/decode share links, PUBLIC_URL / LAN URL choice, payment URLs
-│   │   └── currencies.ts    ← Intl-based currency list + common list
-│   ├── store/
-│   │   ├── billStore.ts
-│   │   └── prefsStore.ts
+│   │   ├── split.ts         ← computeSplit() — all bill math
+│   │   ├── steps.ts         ← stepBlocker() / canReach() — step validation
+│   │   ├── share.ts         ← compact share links, LAN/public URL choice, payment URLs
+│   │   ├── schema.ts        ← Zod schema for saved bills (+ migration of old saves)
+│   │   ├── types.ts         ← Bill, Item, Person, Adjustments
+│   │   ├── bill.ts          ← createBill(), defaultTitle(), newId()
+│   │   ├── currencies.ts    ← Intl-based currency list + search
+│   │   ├── summaryText.ts   ← "Share as text" format
+│   │   ├── clipboard.ts     ← copy with an insecure-context fallback
+│   │   ├── palette.ts       ← avatar colours + initials
+│   │   └── cx.ts            ← class-name helper
+│   └── store/
+│       ├── billStore.ts     ← current bill + history (Zustand, persisted)
+│       ├── prefsStore.ts    ← preferences (persisted)
+│       ├── uiStore.ts       ← current step, open sheet, active scan (not persisted)
+│       └── useSplit.ts      ← memoized computeSplit for the current bill
 └── tests/
-    ├── fixtures/sampleBill.ts  ← the sample receipt (section 11)
+    ├── fixtures/sampleBill.ts ← the sample receipt (section 11)
     ├── money.test.ts
     ├── split.test.ts
+    ├── steps.test.ts
     ├── share.test.ts
-    └── parseReceipt.test.ts  ← fixtures: realistic OCR text, incl. typos and noise
+    ├── schema.test.ts
+    ├── currency.test.ts
+    └── parseReceipt.test.ts ← realistic OCR text, incl. typos and noise
 ```
 
 ---
@@ -729,15 +753,16 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; Pages workflow + Pages enabled, live URL serves the app; `server.host` + `__LAN_HOST__`; zero-setup check passes |
-| M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat + round up + quick split) with tests for every invariant in 8.4 |
-| M2 | **Manual flow** | Shell (2.1); input-method choice (Scan card disabled "Coming soon"); steps 1–5 end to end with manual entry; sample bill; persistence; empty states |
+| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + oxlint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; Pages workflow + Pages enabled, live URL serves the app; `server.host` + `__LAN_HOST__`; zero-setup check passes |
+| M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat + round up + quick split — quick split later removed in M8) with tests for every invariant in 8.4 |
+| M2 | **Manual flow** | Shell (2.1); input-method choice (Scan card disabled "Coming soon"); steps 1–5 end to end with manual entry; sample bill (removed in M8); persistence; empty states |
 | M3 | **Currency picker** | Section 4 complete, including 0- and 3-decimal currencies, locale input parsing, and rounding notice |
 | M4 | **Assign UX** | Custom weights sheet, Everyone, Split remaining, By person, quantity expansion, remaining meter, undo |
-| M5 | **Receipt scanning** | Take photo (touch) + Upload (all; drag/drop/paste) → crop → preprocess → OCR → parse → review/reconcile; self-hosted assets; "Try scanning a sample"; parser tests |
-| M6 | **Stand-outs** | Fair vs Even, Treat, round up, penny-perfect badge, share link + QR + Viewer (public + Wi-Fi targets), pass-the-phone, payment links, Quick Split (incl. scan for total), history, settings |
+| M5 | **Receipt scanning** | Take photo (touch) + Upload (all; drag/drop/paste) → crop → preprocess → OCR → parse → review/reconcile; self-hosted assets; "Try scanning a sample" (removed in M8); parser tests |
+| M6 | **Stand-outs** | Fair vs Even, Treat, round up, penny-perfect badge, share link + QR + Viewer (public + Wi-Fi targets), pass-the-phone, payment links, Quick Split (removed in M8), history, settings |
 | M7 | **Polish & submit** | First-run hints (10.12); polish checklist (10.13); verify a share link from the public URL opens on a phone; README complete (features, screenshots/GIF, AI-tools note, "another hour", decision log); fresh-clone zero-setup check (section 17) |
 | M8 | **Feedback round 1** | All of section 14's D13–D20: neutral header that starts over (with confirmation), no sample data or Quick Split, split method chosen on Assign, clearer scan review, tax/gratuity pre-filled with an additional tip, working menu sheets, and Done → history → home |
+| M9 | **Feedback round 2** | Home screen centred; scan accuracy fix (high-quality resize) and a clear message when the OCR engine can't load; new bills start at 0% tip with a "Suggested" preset (D21); step validation (D22); Summary's false receipt-difference warning and the printed-total field removed; **+ Add item** on the scan review |
 
 ---
 

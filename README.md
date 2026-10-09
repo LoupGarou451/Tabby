@@ -33,6 +33,7 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 
 **The basics, done carefully**
 - Enter items by keyboard (Enter jumps to the next field), or **scan a receipt**: take a photo on your phone or upload one on any device (drag-and-drop and paste work too).
+- Each step asks only for what's needed to work out the totals (an item, a person, every item assigned), and says what's missing before you can continue.
 - Add people, then tap chips to assign items. Tap several people to share an item, or use **custom shares** (2 parts : 1 part) when someone only had a bite.
 - Tax and tip as an amount or %, with 18/20/22% presets that show the dollar amount, tip before or after tax. Tax and any automatic gratuity on a scanned receipt are filled in for you, and you can still add an extra tip on top of a gratuity.
 - A summary card for each person, with an item-by-item breakdown. **Done — save to history** finishes the bill and takes you back to the start; tap the Tabby logo any time to start over (it asks first).
@@ -52,7 +53,7 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 **Receipt scanning, entirely on your device**
 - Tesseract.js runs in a Web Worker. Its files are served by the app itself, so nothing is uploaded and it works offline.
 - A crop step, then a tested parser that handles quantities, modifiers ("+ avocado"), discounts, service charges, OCR typos like `T0TAL`, and European or no-decimal formats.
-- A review screen highlights low-confidence lines and checks the items against the printed subtotal and total, offering "Add $11.00 as unlisted item" when something was missed. Tax and gratuity from the bottom of the receipt carry over to the Tax & tip step.
+- A review screen highlights low-confidence lines and checks the items against the printed subtotal and total, offering "Add $11.00 as unlisted item" or **+ Add item** when something was missed. Tax and gratuity from the bottom of the receipt carry over to the Tax & tip step.
 
 ## Scripts
 
@@ -61,7 +62,7 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 | `npm run dev` | Start the dev server (also reachable on your local network) |
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run preview` | Serve the production build |
-| `npm test` | Unit tests: money math, split rules, receipt parser, share links, saved-data migration (59 tests) |
+| `npm test` | Unit tests: money math, split rules, receipt parser, share links, step validation, saved-data migration (63 tests) |
 | `npm run lint` | Lint with oxlint |
 
 ## How it's built
@@ -77,7 +78,7 @@ Every push to `main` runs the tests and deploys to GitHub Pages.
 Built end to end with **Claude Code**; no code was written by hand.
 
 1. **Spec first.** Claude drafted a design doc from the brief. I reviewed it over several rounds: I removed paid AI services, required zero setup, and chose the logo, license and features. It ended up as a self-contained spec a fresh session could build from.
-2. **Milestones.** Claude built M0–M7 in order, running build, tests and lint before each commit. After I tried it, a round of feedback (M8) went back into the spec first and was then implemented: a simpler home screen, choosing "evenly" on the Assign step, tax and gratuity carried over from scans, a clear end to the flow, and a fix for menu items that wouldn't open.
+2. **Milestones.** Claude built M0–M7 in order, running build, tests and lint before each commit. After I tried it, two rounds of feedback (M8–M9) went back into the spec first and were then implemented: a simpler home screen, choosing "evenly" on the Assign step, tax and gratuity carried over from scans, a clear end to the flow, step validation, no tip until you choose one, and fixes for menu items that wouldn't open, a scan misreading "27.35" as "21.35", and a false "receipt difference" warning.
 3. **Real-browser testing.** Claude drove Chrome to test each milestone and fixed what it found. That included two non-obvious OCR issues: a version mismatch between `tesseract.js` and its WASM core, and image "enhancement" that made OCR *worse* (reading went from ~14 s with junk characters to ~3 s and accurate). Both are recorded in the spec's decision log.
 
 The app itself uses no AI at runtime.
