@@ -61,8 +61,9 @@ function ChooseInput() {
   )
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
+    // Vertically centred in the space between header and bottom bar (pb offsets the hint).
+    <div className="flex flex-1 flex-col justify-center gap-4 pb-10">
+      <div className="text-center">
         <h2 className="text-2xl font-bold">What's on the receipt?</h2>
         <p className="text-muted">Pick how you'd like to add items.</p>
       </div>

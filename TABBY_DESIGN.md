@@ -128,7 +128,7 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
 ```
 
 ### Step 1 — Receipt (the home screen)
-The step opens with a clear **choice of input method**: two large, equal-weight cards. There is no sample data and no separate "split evenly" entry point — how to split is decided on the Assign step (Step 3).
+The step opens with a clear **choice of input method**: two large, equal-weight cards. There is no sample data and no separate "split evenly" entry point — how to split is decided on the Assign step (Step 3). The heading and cards are **vertically centred** in the space between the header and the bottom bar, so the home screen doesn't leave a large empty area below.
 
 ```
 ┌───────────────────────────┐  ┌───────────────────────────┐
