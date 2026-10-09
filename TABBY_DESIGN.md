@@ -4,11 +4,37 @@
 
 | | |
 |---|---|
-| **Status** | Design — pre-implementation (awaiting review) |
-| **Source brief** | *Take-Home Project: Split the Bill* (`~/Downloads/Take-Home_Project__Split_the_Bill.pdf`) |
-| **Repo** | `github.com/LoupGarou451/Tabby` |
+| **Status** | Approved for implementation — build **all** milestones (M0–M7), except items still listed in section 15 |
+| **Source brief** | *Take-Home Project: Split the Bill* — reproduced in full in Appendix A |
+| **Repo** | `https://github.com/LoupGarou451/Tabby` (public) |
+| **License** | MIT — `Copyright (c) 2026 Jeff Fulton` |
 | **Run** | `git clone` → `npm install && npm run dev` — **zero setup, nothing else required** (section 1.3) |
 | **Last updated** | 2026-10-08 |
+
+---
+
+## 0. How to Use This Document (read first)
+
+This document is the **single source of truth** for Tabby. A developer or AI session with no other context should be able to build the whole app from it. Everything needed is here, including the original brief (Appendix A).
+
+### 0.1 Current repo state
+At the time of writing, the repo contains only `TABBY_DESIGN.md` (this file) and `.gitignore`. No application code exists yet. Work starts at milestone M0 (section 13).
+
+### 0.2 Working rules for implementers
+1. **Build milestones in order** (M0 → M7). Each milestone must leave the app working end to end.
+2. **Receipt scanning (M5) comes only after the manual flow is complete** (brief requirement).
+3. **Before every commit**, run: `npm run build`, `npm test`, `npm run lint` — all must pass.
+4. **One commit per milestone** (or smaller), pushed to `main`. Message format: `M2: Manual flow — steps 1–5 end to end`.
+5. **Never add** anything that breaks zero setup (section 1.3): no API keys, no `.env`, no paid services, no `postinstall` downloads.
+6. **When the spec is silent**, pick the simplest option that fits the principles below, and record it in the **Decision Log** (section 16). Don't stop to ask about small things; do stop for anything that contradicts this document.
+7. **Don't re-open decisions** recorded in section 14 (Resolved Decisions).
+
+### 0.3 Product principles (tie-breakers)
+1. **Fast at the table** — fewest taps from receipt to "everyone knows what they owe".
+2. **Fair by default, flexible when needed.**
+3. **Never wrong by a cent** — totals always reconcile exactly.
+4. **Nothing leaves the device**, and nothing needs setting up.
+5. **Polished small scope beats broken big scope** — if a feature can't be made solid, cut it and log why.
 
 ---
 
@@ -22,14 +48,11 @@
 5. Show a final summary of what each person owes.
 6. Fully client-side — no backend, no accounts, no auth.
 
-### 1.2 Committed extras (this project)
-7. **Brief splash logo** when the app opens (section 3).
-8. **Receipt image upload** → items, tax, tip, and total extracted automatically **on-device**, then reviewed by the user. (Built *after* 1–6 work end to end, per the brief.)
-9. A small set of "stand-out" features (section 8) chosen to answer the brief's prompts:
-   - the friend who "only had a salad",
-   - two people sharing an entrée,
-   - the fastest path from receipt to "everyone knows what they owe",
-   - "could you actually use this at dinner?"
+### 1.2 Committed extras (all in scope)
+7. **Splash logo** shown briefly when the app opens (section 3).
+8. **Currency picker** (section 4).
+9. **Receipt image upload** → items, tax, tip, and total extracted **on-device**, then reviewed (section 9). Upload a file on any device, or take a photo with the camera on mobile.
+10. **Stand-out features** (section 10): Fair vs Even, share link + QR, pass-the-phone, payment links, Treat, penny-perfect badge, remaining meter, bill history, polish.
 
 ### 1.3 Constraints
 - **Zero setup.** The *only* thing a user does is:
@@ -48,18 +71,23 @@
   Everything the app needs is either a regular npm dependency (installed by `npm install`) or committed to the repo. The only prerequisite is a current Node.js LTS (≥ 20), declared in `package.json` `engines` and in the README.
 - **No API keys, no paid services, no third-party accounts.** Every feature runs on free, open-source libraries bundled with the app.
 - **No backend.** All state lives in the browser.
-- **Works offline** once loaded, including receipt scanning (OCR assets are self-hosted; see 7.3).
+- **Works offline** once loaded, including receipt scanning (OCR assets are self-hosted; see 9.3).
 
 ### 1.4 Non-goals
 - User accounts, sync servers, or a database.
 - Processing payments. Tabby can *link out* to payment apps through plain URLs, but never moves money.
+- Currency **conversion** (the picker changes the currency of the bill; it doesn't convert between currencies).
 - Multi-receipt trip ledgers (Splitwise territory). One meal, one bill.
+- UI translation — the interface is English-only. Number and currency *formatting* follow the user's locale.
 
-### 1.5 Evaluation criteria → how Tabby answers them
+### 1.5 Supported browsers
+Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edge, Firefox, and Safari. Primary design target: a phone held in one hand (375–430 px wide). Desktop works, using a centered column with a max width of ~480 px.
+
+### 1.6 Evaluation criteria → how Tabby answers them
 
 | Reviewer is looking for | Tabby's answer |
 |---|---|
-| Product instinct | Explicit, documented decisions for every ambiguity (section 6), "fair vs even" comparison, totals that add up to the exact cent |
+| Product instinct | Explicit, documented decisions for every ambiguity (section 8), "fair vs even" comparison, totals that add up to the exact cent |
 | Working software | Base flow ships first and stays green; image upload is additive and optional |
 | Tool fluency | Built entirely with Claude Code; iterative milestones, commits per milestone |
 | UI/UX care | Mobile-first, one-thumb flow, splash, pass-the-phone mode, share sheet |
@@ -67,16 +95,33 @@
 
 ---
 
-## 2. Core User Flow
+## 2. App Shell & Core User Flow
 
+### 2.1 Shell
+```
+┌─────────────────────────────────────────┐
+│ 🐱 Tabby   [Friday dinner ✎]  [USD ▾] ☰ │  ← header: logo, editable bill title, currency chip, menu
+├─────────────────────────────────────────┤
+│                                         │
+│            (current step)               │
+│                                         │
+├─────────────────────────────────────────┤
+│ Unassigned: $12.00     [ Next: People → ]│  ← bottom bar: live status + primary action
+│ ● ● ○ ○ ○  Receipt·People·Assign·Tip·Sum │  ← step dots (tappable)
+└─────────────────────────────────────────┘
+```
+- **Header menu (☰)**: New bill · Bill history · Settings · About (version, license, GitHub link).
+- **Bill title**: defaults to `"<Weekday> <meal>"` (e.g. "Friday dinner": breakfast before 11:00, lunch before 16:00, dinner otherwise). Tap to edit.
+- **Steps are freely navigable** by tapping the dots. Nothing is lost when moving between steps.
+- **Primary action** is always bottom-right, within thumb reach.
+
+### 2.2 Flow
 ```
             ┌────────────┐   ┌────────────┐   ┌────────────┐   ┌────────────┐   ┌────────────┐
  Splash ──▶ │ 1. Receipt │──▶│ 2. People  │──▶│ 3. Assign  │──▶│ 4. Tax/Tip │──▶│ 5. Summary │
- (~1.2s)    │ scan/type  │   │ add names  │   │ tap chips  │   │ % or $     │   │ share/pay  │
+ (~1.2s)    │ scan/type  │   │ add names  │   │ tap chips  │   │ % or amt   │   │ share/pay  │
             └────────────┘   └────────────┘   └────────────┘   └────────────┘   └────────────┘
 ```
-
-A persistent bottom bar shows step progress and a live **"Unassigned: $X.XX"** counter so the user always knows what's left. Users can jump between steps; nothing is lost.
 
 ### Step 1 — Receipt
 The step opens with a clear **choice of input method**: two large, equal-weight cards.
@@ -89,65 +134,93 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 └───────────────────────────┘  └───────────────────────────┘
               Try a sample receipt →
 ```
+(Until M5 ships, the Scan card shows "Coming soon" and is disabled.)
 
 **Scan a receipt** offers two capture options:
 
 | Option | Shown on | How it works |
 |---|---|---|
-| **Take photo** | Mobile / tablet (devices with a camera and touch screen) | `<input type="file" accept="image/*" capture="environment">` opens the rear camera directly. |
+| **Take photo** | Mobile / tablet (touch devices) | `<input type="file" accept="image/*" capture="environment">` opens the rear camera directly. |
 | **Upload image** | All devices | `<input type="file" accept="image/*">` with *no* `capture` attribute, so it opens the photo library / file picker. On desktop, the card also accepts **drag-and-drop** and **paste** (⌘/Ctrl+V). |
 
 - **Device detection**: "Take photo" is shown when `matchMedia('(pointer: coarse)').matches` is true. Desktop browsers ignore `capture`, so a camera button there would just be a duplicate file picker. Desktop users get "Upload image" plus the drop zone instead.
-- Both options feed the same pipeline: crop → preprocess → OCR → review (section 7).
+- File inputs work over plain `http://` (unlike `getUserMedia`), so the camera works when the dev server is opened from a phone on the LAN.
+- Both options feed the same pipeline: crop → preprocess → OCR → review (section 9).
 
-**Enter manually** opens the fast-entry list: `name` · `price` · `qty` (default 1). Enter moves to the next row; prices accept `12`, `12.5`, `$12.50`.
+**Enter manually** opens the fast-entry list: `name` · `price` · `qty` (default 1).
+- Enter/Return in the price field adds a new row and focuses its name field.
+- Prices accept `12`, `12.5`, `$12.50`, `12,50` (section 4.3).
+- An empty name becomes `Item N`. Price must be > 0; a row with an empty price is ignored, not saved.
+- Each row has a delete button; deletes show an **Undo** snackbar (5 s).
 
 **Switching between methods** is always possible, and nothing is lost:
-- After either method, the item list shows **"+ Add item"** (manual) and **"📷 Scan more"** buttons, so users can mix methods. For example, they can scan the receipt, then type in a missed item, or scan a second page of a long receipt.
+- After either method, the item list shows **"+ Add item"** and **"📷 Scan more"** buttons, so users can mix methods (scan, then type a missed item, or scan page 2 of a long receipt).
 - If items already exist when a new scan finishes, the review screen asks **"Add to current items"** (default) or **"Replace current items"**.
-- The last-used method is remembered (localStorage) and shown first next time, but both cards are always visible.
+- The last-used method is remembered and shown first next time (left card), but both cards are always visible.
 
-Also on this step:
-- **Try a sample receipt**: loads demo data so reviewers can see the whole flow in 10 seconds.
-- Optional receipt-level fields: **Tax**, **Tip already included / service charge**, **Printed total** (used for reconciliation).
+**Also on this step:**
+- **Try a sample receipt**: loads the sample bill (section 11) so anyone can see the whole flow in 10 seconds.
+- A collapsible **"Receipt totals (optional)"** panel: **Tax**, **Service charge / auto-gratuity**, **Discount**, **Printed total** (used for reconciliation). These are filled automatically by a scan.
 
 ### Step 2 — People
-- Add by name; each gets a color + initial avatar chip.
-- Quick-add "+1, +2…" to add placeholder diners ("Guest 3") when names don't matter.
-- Recent names from previous bills are offered as one-tap chips (localStorage).
-- Optionally mark one person as **"I paid"** (the payer — used for payment links in step 5).
+- Add by name (Enter adds and keeps focus). Each person gets an avatar chip: a color from a fixed 10-color palette (assigned in order, high contrast in both themes) + initials.
+- **Quick add**: "+ Guest" adds "Guest N" for when names don't matter.
+- **Recent names**: names from the last 5 bills are offered as one-tap chips.
+- Tap a person to rename; swipe or tap ✕ to remove (with Undo). Removing a person removes them from every item's shares; items left with no one become unassigned (and the bottom bar updates).
+- **Payer**: optionally mark one person as "Paid the bill". This drives payment links (10.4) and the "Paid" checkmarks.
+- Duplicate names are allowed but shown with a suffix ("Sam (2)") so chips stay distinguishable.
 
 ### Step 3 — Assign
 - Each item is a card with the row of people chips beneath it. **Tap a chip to toggle** that person onto the item.
-- One person tapped → they own it. Several tapped → split evenly among them.
-- Long-press (or "⋯") an item for **custom shares** — e.g. Alex 2 parts, Sam 1 part ("I only had a couple bites").
-- Shortcuts: **Everyone** (appetizers, shared bottle), **Split remaining items evenly**, and a **per-person mode** where you pick a person and tap all of *their* items (faster for "I just had the salad").
-- Items with `qty > 1` can be **expanded into units** ("3 × Beer $18" → three $6 beers) so each can go to a different person.
+- One person selected → they own it. Several → split evenly among them.
+- **Custom shares**: "⋯" on an item opens a sheet with a stepper per selected person (0–10 parts, default 1). For example, Alex 2 parts and Sam 1 part means Alex pays ⅔. The sheet live-previews each person's amount.
+- **Shortcuts** (top of the step):
+  - **Everyone** on an item card: selects all people for that item.
+  - **Split remaining evenly**: assigns every unassigned item to everyone.
+  - **By person** toggle: pick one person, then tap all of *their* items. Faster for "I just had the salad".
+- **Quantity expansion**: items with `quantity > 1` show "Split into N" on the card. "3 × Beer $18" becomes three "Beer" items at $6 each (using the largest-remainder method from section 8.1 if the amount doesn't divide evenly), so each can go to a different person.
+- **Remaining meter** (10.7) at the top: amount assigned / total, which turns green at 100%.
 
 ### Step 4 — Tax & Tip
-- **Tax**: dollar amount from the receipt (default) or a percentage.
-- **Tip**: preset buttons **18% / 20% / 22%**, custom %, or custom $ amount.
-- **Tip base** toggle: *pre-tax subtotal* (default) or *post-tax total*.
-- If the receipt already includes gratuity/service charge, tip defaults to 0% with a notice.
+- **Tax**: amount (default, pre-filled from a scan) or percentage.
+- **Tip**: preset buttons **18% / 20% / 22%**, each showing its resulting amount underneath (e.g. "20% · $31.40"). Also a custom % and a custom amount. Defaults to the user's preferred tip % from Settings (initially 20%).
+- **Tip base** toggle: *pre-tax* (default) or *post-tax* (definitions in 8.1).
+- If a service charge / auto-gratuity is present, the tip defaults to 0% with a notice: "This receipt already includes a $24.00 service charge."
+- No tax or tip is valid (0).
 
 ### Step 5 — Summary
-- One card per person: **total owed** in large type, expandable breakdown (their items with share fractions, tax share, tip share).
-- Footer reconciliation: `Σ people = Bill total ✓` (to the cent).
-- **Fair vs. Even** toggle showing what each person would pay under an even split, with the difference ("Priya saves $14.20 with a fair split").
-- Actions: **Share summary** (Web Share API / copy as text), **Share link** (section 8.2), **Request payment** links, **Mark as paid** checkboxes.
+- One card per person: **total owed** in large type, expandable breakdown (their items with share fractions such as "½ Nachos", then subtotal, discount, tax, tip, service).
+- Footer reconciliation: "✓ Adds up to $187.43 exactly" (10.6).
+- If anything is unassigned: a blocking banner — "$12.00 still unassigned" with **[Assign items]** and **[Split evenly among everyone]** buttons. Per-person totals are still shown, marked "so far".
+- **Fair / Even** segmented toggle (10.1).
+- Actions:
+  - **Share summary**: Web Share API where available, otherwise copy to clipboard. Text format:
+    ```
+    Friday dinner — $187.43 total
+    Alex   $52.10
+    Sam    $41.88
+    ...
+    Split with Tabby
+    ```
+  - **Share link / QR** (10.2), **Pay {payer}** buttons (10.4), and a **Paid ✓** checkbox per person (the payer is automatically checked).
 
 ---
 
 ## 3. Splash Logo
 
-A short branded moment when the app opens. It should feel polished, never feel slow, and never block someone who's in a hurry.
+A short branded moment when the app opens. It should feel polished, never feel slow, and never get in the way of someone who's in a hurry.
 
-### 3.1 Logo
-- **Proposed concept:** a friendly, minimal **tabby-cat face whose forehead stripes are receipt lines**, with a small zig-zag "torn receipt" edge along the bottom of the chin. It's a pun on the name and reads clearly at favicon size. *(See open question Q2 for alternatives.)*
-- **Format:** a single hand-authored **inline SVG** (`src/brand/Logo.tsx`, also exported as `public/logo.svg`). No image files, no icon-font or design-tool dependency.
-- **Palette:** warm tabby orange (`#F28C28`) with a dark ink stroke (`#2B2118`). In dark mode the background flips to near-black and the ink stroke lightens. Colors are CSS custom properties, so one SVG serves both themes.
-- **Wordmark:** "Tabby" in a rounded system-font stack (`ui-rounded, "SF Pro Rounded", system-ui, sans-serif`), so there's no web-font download.
-- **Reuse:** the same SVG becomes the favicon, the `apple-touch-icon`, and the PWA icon, plus a small header logo inside the app.
+### 3.1 Logo (decided: tabby-cat face with receipt-line stripes)
+- **Concept:** a friendly, minimal **front-facing tabby-cat face**:
+  - two triangular ears,
+  - **three horizontal forehead stripes drawn as receipt lines** — short rows of varying length, like printed item lines, the last one with a small "price" dash at the right,
+  - simple oval eyes, a small triangle nose, and three whiskers per side,
+  - a **zig-zag "torn receipt" edge** along the bottom of the chin, so the head reads as a receipt.
+- **Format:** a single hand-authored **SVG** (`viewBox="0 0 128 128"`), flat shapes + strokes, no gradients, **no text inside the icon**. It lives in `src/brand/Logo.tsx` and is exported identically to `public/logo.svg`. No image files and no design-tool dependency.
+- **Palette:** tabby orange `#F28C28` fill, ink `#2B2118` strokes, receipt-paper `#FFF8EE` for the face's lower half. In dark mode the ink becomes `#F5E9DA` and the background `#14110F`. Colors are CSS custom properties, so one SVG serves both themes.
+- **Wordmark:** "Tabby" set beside or below the icon in a rounded system-font stack (`ui-rounded, "SF Pro Rounded", system-ui, sans-serif`), weight 800. No web-font download.
+- **Legibility test:** at 32×32 px, the ears, stripes, and torn edge must still read. If the whiskers muddy it, the favicon variant may omit them.
+- **Reuse:** favicon, `apple-touch-icon`, PWA/manifest icon, and the small header logo in the app.
 
 ### 3.2 Behavior
 | Rule | Detail |
@@ -160,309 +233,518 @@ A short branded moment when the app opens. It should feel polished, never feel s
 | **Accessibility** | `role="img"` with `aria-label="Tabby"`; the overlay is `aria-hidden` once dismissed and doesn't trap focus. |
 
 ### 3.3 Implementation sketch
-- `index.html`: a `<div id="splash">` holding the inline SVG plus a CSS keyframe animation. This avoids a white flash.
-- `src/brand/useSplash.ts`: on mount, checks the session flag and the shared-link hash, waits out the remaining minimum time, adds a `splash--out` class, and removes the node on `transitionend`.
+- `index.html`: a `<div id="splash">` holding the inline SVG plus a CSS keyframe animation. This avoids a white flash. An inline `<script>` in `<head>` hides it immediately if the session flag is set or the URL hash starts with `#b=`.
+- `src/brand/useSplash.ts`: on mount, waits out the remaining minimum time, adds a `splash--out` class, removes the node on `transitionend`, and sets the session flag.
 - About 40 lines of code and no dependencies.
 
 ---
 
-## 4. Tech Stack
+## 4. Currency Picker (decided: included)
 
-Everything is free and open source (MIT / Apache-2.0) and bundled. **No API keys, no accounts, no paid tiers.**
+### 4.1 Behavior
+- The **currency chip** in the header (e.g. `USD ▾`) opens a bottom sheet:
+  - a search field (matches code or name: "eur", "euro", "yen"),
+  - a **Common** section pinned at the top: USD, EUR, GBP, CAD, AUD, MXN, JPY, INR, CHF, CNY,
+  - an **All currencies** list below.
+- The list comes from the browser — `Intl.supportedValuesOf('currency')` with names from `new Intl.DisplayNames([locale], { type: 'currency' })`. **No library, no network.** If `supportedValuesOf` is unavailable, fall back to the Common list.
+- **Default**: USD for the very first bill. After that, new bills use the last currency chosen (stored in preferences). Each bill stores its own currency.
+- **Changing currency on a bill with items** keeps the *displayed numbers* (12.50 stays 12.50) and only changes the symbol. There is no conversion (non-goal). If the new currency has fewer decimal places, amounts are rounded with a one-line notice ("Amounts rounded to whole yen").
 
-| Concern | Choice | Why |
-|---|---|---|
-| Build / dev server | **Vite** + **React 18** + **TypeScript** | Fastest path to `npm install && npm run dev`; no server runtime needed |
-| Styling | **Tailwind CSS** | Quick, consistent mobile-first UI; easy dark mode |
-| State | **Zustand** + `persist` middleware (localStorage) | Tiny, no boilerplate; survives a refresh at the table |
-| Validation | **Zod** | Validates user input, share-link payloads, and parsed OCR output |
-| Receipt OCR | **tesseract.js** (Apache-2.0), lazy-loaded, assets self-hosted | Free, on-device, works offline; no external service |
-| Share links | **lz-string** | Compresses bill state into a URL hash |
-| QR codes | **qrcode** | Generated locally as SVG/canvas |
-| Tests | **Vitest** | Unit tests for the money math and receipt parser (where bugs would hurt most) |
-| PWA (stretch) | `vite-plugin-pwa` | "Add to Home Screen", works offline at the restaurant |
+### 4.2 Minor units (all money math)
+- All money is stored as **integers in the currency's minor unit** (cents for USD, whole yen for JPY, fils for BHD).
+- Decimal places come from `new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions().maximumFractionDigits` (0, 2, or 3).
+- Display uses `Intl.NumberFormat(userLocale, { style: 'currency', currency })`.
 
-No router is required — the five steps are a single-page stepper. Shared links use the URL hash.
+### 4.3 Money input parsing (`parseMoney(text, currency)`)
+- Strips currency symbols, letters, and spaces.
+- Decimal separator: if the string contains both `.` and `,`, the **last** one is the decimal separator. If it contains only one, that is the decimal separator when followed by 1–3 digits at the end (`12,50` → 12.50); otherwise it's a thousands separator (`1,250` → 1250).
+- Rounds to the currency's decimal places. Returns `null` for invalid or negative input (shown as an inline error).
+
+### 4.4 Effects elsewhere
+- **Payment links** (10.4): Venmo appears only for USD; Cash App only for USD and GBP. "Copy request text" is always available.
+- **OCR parsing** (9.1) uses the bill's currency decimals when matching prices.
+- **Share links** include the currency.
 
 ---
 
-## 5. Data Model
+## 5. Tech Stack
 
-All money is stored as **integer cents**. Floats never touch money.
+Everything is free and open source (MIT / Apache-2.0) and bundled. **No API keys, no accounts, no paid tiers.** Versions below were verified on npm on 2026-10-08. Use these majors (latest minor/patch within them).
+
+| Concern | Package(s) | Major | Notes |
+|---|---|---|---|
+| Build / dev server | `vite`, `@vitejs/plugin-react` | 8 / 6 | Scaffold with `npm create vite@latest` (react-ts template), then adapt |
+| UI | `react`, `react-dom` | 19 | |
+| Language | `typescript` | as shipped by the Vite template | Strict mode on |
+| Styling | `tailwindcss`, `@tailwindcss/vite` | 4 | v4 is configured in CSS (`@import "tailwindcss";` + `@theme`), **no `tailwind.config` file**. Dark mode via a `.dark` class on `<html>` (`@custom-variant dark`). |
+| State | `zustand` (+ `persist` middleware) | 5 | localStorage persistence |
+| Validation | `zod` | 4 | Share-link payloads, persisted state, parsed OCR output |
+| OCR | `tesseract.js`, `tesseract.js-core`, `@tesseract.js-data/eng` | 7 / 6 / 1 | Lazy-loaded; assets self-hosted (9.3) |
+| Asset serving | `vite-plugin-static-copy` | 4 | Serves OCR assets from `node_modules` in dev and build |
+| Share links | `lz-string` | 1 | `compressToEncodedURIComponent` |
+| QR codes | `qrcode` | 1 | Render to SVG string locally |
+| Tests | `vitest` | 5 | Unit tests for pure logic |
+| Lint / format | `eslint` (template config), `prettier` | latest | |
+
+**`package.json` scripts**: `dev` (`vite`), `build` (`tsc -b && vite build`), `preview`, `test` (`vitest run`), `lint` (`eslint .`), `format` (`prettier --write .`).
+**`engines`**: `{ "node": ">=20" }`.
+**No router** — the steps are a single-page stepper. Shared links use the URL hash.
+
+---
+
+## 6. Data Model
 
 ```ts
-type Cents = number; // integer
+type Money = number; // integer, in the currency's minor unit (section 4.2)
 
 interface Person {
-  id: string;
+  id: string;            // crypto.randomUUID()
   name: string;
-  color: string;        // avatar color token
+  colorIndex: number;    // 0–9, into the fixed avatar palette
 }
 
 interface Item {
   id: string;
   name: string;
-  priceCents: Cents;    // line total (qty × unit)
-  quantity: number;     // default 1
-  shares: Record<string /* personId */, number /* weight */>; // {} = unassigned
-  source: 'manual' | 'scan';
-  confidence?: number;  // from OCR, 0–1, drives "please review" highlighting
+  price: Money;          // line total (qty × unit), > 0
+  quantity: number;      // integer ≥ 1, default 1
+  shares: Record<string /* personId */, number /* weight, integer 1–10 */>; // {} = unassigned
+  source: 'manual' | 'scan' | 'sample';
+  confidence?: number;   // 0–100 from OCR; < 70 → flagged for review
 }
 
+type Amount = { mode: 'amount'; value: Money } | { mode: 'percent'; bps: number }; // bps: basis points, 2000 = 20%
+
 interface Adjustments {
-  tax:  { mode: 'amount'; cents: Cents } | { mode: 'percent'; rate: number };
-  tip:  { mode: 'amount'; cents: Cents } | { mode: 'percent'; rate: number };
+  tax: Amount;               // default { mode: 'amount', value: 0 }
+  tip: Amount;               // default { mode: 'percent', bps: prefs.defaultTipBps }
   tipBase: 'preTax' | 'postTax';
-  serviceChargeCents: Cents;   // auto-gratuity on the receipt
-  discountCents: Cents;        // coupons / comps, applied proportionally
+  serviceCharge: Money;      // auto-gratuity printed on the receipt
+  discount: Money;           // coupons / comps (positive number, subtracted)
 }
 
 interface Bill {
+  schemaVersion: 1;
   id: string;
-  title: string;               // "Friday at Nopa"
-  createdAt: string;
-  currency: string;            // 'USD' default; Intl.NumberFormat for display
+  title: string;
+  createdAt: string;         // ISO
+  updatedAt: string;
+  currency: string;          // ISO 4217 code
   people: Person[];
   items: Item[];
   adjustments: Adjustments;
+  printedTotal?: Money;      // for reconciliation
   payerId?: string;
-  printedTotalCents?: Cents;   // from receipt, for reconciliation
+  treatedIds: string[];      // people whose share is covered by others (10.5)
   paid: Record<string, boolean>;
+}
+
+interface Preferences {
+  schemaVersion: 1;
+  currency: string;          // last used, default 'USD'
+  defaultTipBps: number;     // default 2000
+  lastInputMethod: 'scan' | 'manual';
+  recentNames: string[];     // most recent first, max 20
+  payHandles: { venmo?: string; cashtag?: string };
+  theme: 'system' | 'light' | 'dark';
 }
 ```
 
-Storing `shares` as **weights** handles every assignment case with one shape:
-- solo: `{ alex: 1 }`
-- even split: `{ alex: 1, sam: 1 }`
-- uneven split: `{ alex: 2, sam: 1 }`
+**Storage (localStorage, via Zustand `persist`):**
+- `tabby:bill` — the current bill.
+- `tabby:history` — up to 20 past bills (most recent first).
+- `tabby:prefs` — preferences.
+
+Persisted data is validated with Zod on load. If validation fails (corrupt data or an old schema with no migration), the app starts fresh rather than crashing, and logs to the console.
+
+**Shares as weights** cover every case with one shape: solo `{ alex: 1 }`, even `{ alex: 1, sam: 1 }`, uneven `{ alex: 2, sam: 1 }`.
 
 ---
 
-## 6. Calculation Rules (the product decisions)
+## 7. State & Actions
 
-All logic lives in one pure function — `computeSplit(bill): SplitResult` in `src/lib/split.ts` — with unit tests. The UI never does arithmetic.
+Two Zustand stores: `useBill` (current bill + history) and `usePrefs`. Components call actions and never mutate state directly. They read derived numbers only from `computeSplit()` (memoized with `useMemo` on the bill).
 
-### 6.1 Algorithm
-1. **Item shares.** For each item, divide `priceCents` across its weights using the *largest-remainder method*: give everyone the rounded-down amount, then hand out the leftover cents one at a time to the largest fractional remainders, breaking ties by a stable person order. Each item's per-person cents then sum *exactly* to the item price.
-2. **Per-person subtotal** = Σ their item shares.
-3. **Discount** is allocated in proportion to each subtotal (largest-remainder again).
-4. **Tax** is allocated in proportion to each post-discount subtotal.
-   - *Why proportional, not even:* the salad-eater shouldn't pay tax on someone else's steak.
-5. **Tip** is computed on the chosen base (pre-tax subtotal by default), then allocated proportionally.
-   - *Why pre-tax by default:* that's the etiquette convention; post-tax is one toggle away.
-6. **Service charge** is allocated proportionally, like tip.
-7. **Total per person** = subtotal − discount + tax + tip + service.
+`useBill` actions: `newBill()`, `loadSample()`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
 
-### 6.2 Invariants (tested)
-- `Σ person totals === bill total` — to the cent, always.
-- Every allocation is a non-negative integer.
-- Same input → same output (deterministic tie-breaking for leftover cents).
-- Unassigned items are **excluded** from per-person totals and shown as a blocking warning on the Summary ("$12.00 still unassigned — assign or split evenly?"). They're never silently spread across everyone.
+`newBill()` archives the current bill to history if it has at least one item, then starts a blank bill. It asks for confirmation only if the current bill has unsaved-looking data (items but no people assigned).
 
-### 6.3 Decisions on ambiguous cases
+**Undo**: a single-level undo for destructive actions (remove item, remove person, replace items, new bill), surfaced through a snackbar.
+
+---
+
+## 8. Calculation Rules (the product decisions)
+
+All logic lives in one pure function — `computeSplit(bill, mode: 'fair' | 'even' = 'fair'): SplitResult` in `src/lib/split.ts` — with unit tests. The UI never does arithmetic on money.
+
+### 8.1 Algorithm (fair mode)
+Let **assigned items** be items with at least one share weight > 0.
+
+1. **Allocation primitive — `allocate(total, weights)`** (largest-remainder method): give each weight `floor(total × w / Σw)`, then hand out the leftover units one at a time to the largest fractional remainders. Ties go to the earlier index (people in list order). The result always sums *exactly* to `total`. If every weight is 0, the result is all zeros (callers handle this case).
+2. **Item shares**: for each assigned item, `allocate(item.price, weights)`. Unassigned items go into an **Unassigned** bucket.
+3. **Subtotals**: `itemsSubtotal` = Σ all item prices. Each person's subtotal = Σ their item shares.
+4. **Bill-level amounts** (computed once for the whole bill):
+   - `discount` = `adjustments.discount`, capped at `itemsSubtotal`.
+   - `taxableBase` = `itemsSubtotal − discount`.
+   - `tax` = the amount, or `round(taxableBase × bps / 10000)` in percent mode.
+   - `tipBase` = `itemsSubtotal` (**pre-tax**, before discount — tip on what was served) or `itemsSubtotal + tax` (**post-tax**).
+   - `tip` = the amount, or `round(tipBase × bps / 10000)` in percent mode.
+   - `service` = `adjustments.serviceCharge`.
+   - `billTotal` = `itemsSubtotal − discount + tax + tip + service`.
+5. **Distribute** each bill-level amount (discount, tax, tip, service) across **people + the Unassigned bucket**, in proportion to their item subtotals, using `allocate`. Unassigned items therefore carry their fair share of tax and tip until someone is assigned to them.
+   - *Why proportional, not even:* the salad-eater shouldn't pay tax and tip on someone else's steak.
+   - *Why pre-tax tip by default:* that's the etiquette convention; post-tax is one toggle away.
+6. **Treat** (10.5): for each treated person, their computed total is re-allocated across the non-treated people, in proportion to the non-treated people's totals, and the treated person's total becomes 0. If everyone is treated, the Treat toggle is disabled for the last person.
+7. **Per-person total** = subtotal − discount share + tax share + tip share + service share (+ treat redistribution).
+
+### 8.2 Even mode
+`personTotal = allocate(billTotal, [1, 1, …])` across non-treated people (treated people pay 0). Unassigned items don't matter in even mode. Used by the Fair/Even toggle.
+
+### 8.3 SplitResult
+```ts
+interface SplitResult {
+  billTotal: Money;
+  itemsSubtotal: Money;
+  unassigned: { subtotal: Money; total: Money; itemIds: string[] };
+  people: Array<{
+    personId: string;
+    items: Array<{ itemId: string; share: Money; fraction: [number, number] }>; // e.g. [1, 2] = ½
+    subtotal: Money; discount: Money; tax: Money; tip: Money; service: Money;
+    treatAdjustment: Money; // + for people covering, − for the treated person
+    total: Money;
+  }>;
+  reconciles: boolean; // Σ people totals + unassigned.total === billTotal
+}
+```
+
+### 8.4 Invariants (unit-tested)
+- `Σ person.total + unassigned.total === billTotal`, always, to the minor unit.
+- Every allocation is an integer ≥ 0.
+- Same input → same output.
+- In even mode, totals differ by at most 1 minor unit.
+- A person with no items pays 0 in fair mode (unless they're covering a treat).
+- Works for 0-, 2-, and 3-decimal currencies.
+
+### 8.5 Decisions on ambiguous cases
 
 | Situation | Decision |
 |---|---|
 | Friend "only had a salad" | Proportional tax & tip by default; Summary shows **Fair vs Even** so the group sees why. |
 | Two people share an entrée | Tap both chips → 50/50. Uneven? Custom weights (2:1, etc.). |
 | Shared appetizer for the table | **Everyone** shortcut. |
-| One person covers another (birthday) | "Treat" toggle on a person: their total is redistributed proportionally across everyone else (section 8.5). |
-| Leftover cent from rounding | Largest-remainder method; the payer never silently absorbs a penny. |
+| One person covers another (birthday) | **Treat** toggle (10.5). |
+| Leftover cent from rounding | Largest-remainder method; no one silently absorbs a penny. |
 | Scanned items don't add up to printed subtotal | Reconciliation banner shows the difference, with a one-tap "Add as 'Unlisted item'" fix. |
-| Tip already on the receipt | Detected as a service charge; tip defaults to 0%. |
-| Zero people or zero items | Steps can be skipped, but the Summary shows an empty state with a clear next action. |
+| Tip already on the receipt | Treated as a service charge; tip defaults to 0%. |
+| Discount larger than items | Capped at the items subtotal. |
+| Zero people or zero items | Steps can be skipped; the Summary shows an empty state with a clear next action ("Add people" / "Add items"). |
+| Person removed | Removed from all shares; any items left with no one become unassigned. |
 
 ---
 
-## 7. Receipt Image Upload (on-device OCR)
+## 9. Receipt Image Upload (on-device OCR)
 
-Built only after sections 2–6 work end to end, as the brief requires. It's purely additive: its output is the same `Item[]` + `Adjustments` that the manual flow produces. **Everything runs in the browser — the image never leaves the device.**
+Built only after sections 2–8 work end to end (milestone M5), as the brief requires. It's purely additive: its output is the same `Item[]` + `Adjustments` that the manual flow produces. **Everything runs in the browser; the image never leaves the device.**
 
-### 7.1 Flow
+### 9.1 Flow
 ```
-Pick/take photo ─▶ Crop & straighten ─▶ Preprocess ─▶ OCR (Web Worker) ─▶ Line parser ─▶ Zod validate ─▶ Review screen ─▶ Items in bill
+Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worker) ─▶ Line parser ─▶ Zod validate ─▶ Review screen ─▶ Items in bill
 ```
 
-1. **Capture**: the user picks **Take photo** (camera, on mobile) or **Upload image** (file picker / photo library, any device; plus drag-and-drop and paste on desktop), as described in Step 1. Accepts JPEG, PNG, WebP, and HEIC where the browser can decode it. Unreadable files show a friendly error with a "Try another photo" / "Enter manually instead" choice.
-2. **Crop & rotate** (lightweight, hand-built): the photo appears with a draggable crop rectangle and a 90° rotate button. Trimming the table and background around the receipt is the biggest single accuracy gain for OCR. "Use whole image" skips this step.
-3. **Preprocess** with a plain `<canvas>` (no library):
-   - apply the photo's orientation, then scale so the receipt is about 1500–2000 px tall (upscale small photos, downscale huge ones),
-   - grayscale → contrast stretch → adaptive threshold to black-on-white, which handles shadows and thermal-paper fade.
-4. **OCR**: `tesseract.js` runs in a Web Worker so the UI stays responsive. A progress bar is driven by Tesseract's `logger` callback. It's configured for receipts: English, single-column page segmentation, and a character whitelist that favors letters, digits, `$.,-@x%`.
-5. **Parse** (`src/scan/parseReceipt.ts`, pure and unit-tested against sample OCR text):
-   - **Price lines**: match a trailing amount, e.g. `/^(.*?)\s+\$?(-?\d{1,4}[.,]\d{2})\s*[A-Z]?$/` (the optional trailing letter covers tax-code flags like `T` or `F`).
-   - **Quantities**: leading `2 x`, `2 @`, `2 ` patterns → `quantity`, keeping the printed line total.
-   - **Totals section**: keyword detection (case-insensitive and tolerant of OCR typos like `5ubtotal` / `T0TAL`) for `subtotal`, `tax`, `tip`, `gratuity`, `service`, `discount`/`comp`, `total`/`amount due`/`balance`. These go to `Adjustments` / `printedTotalCents`, never to items.
-   - **Noise filtering**: drop lines like card numbers, dates/times, phone numbers, addresses, `change`, `cash`, `visa`, and `thank you`.
-   - **Modifiers**: an indented line or one starting with `+` (e.g. "+ avocado 2.00") merges into the item above it.
-   - **Confidence**: Tesseract's per-line confidence is copied onto each item. Lines below ~70 are flagged for review.
-6. **Validate & convert**: Zod schema → integer cents → `Item[]`, plus `adjustments.tax`, `serviceChargeCents`, `discountCents`, and `printedTotalCents`.
+1. **Capture**: **Take photo** (camera, on touch devices) or **Upload image** (file picker / photo library on any device; plus drag-and-drop and paste on desktop), as described in Step 1. Accepts JPEG, PNG, WebP, and HEIC where the browser can decode it (iOS converts HEIC to JPEG when picking). Files that can't be decoded show "We couldn't read that image" with **Try another photo** / **Enter manually instead**.
+2. **Crop & rotate** (hand-built, no library): the photo appears full-width with a draggable crop rectangle (corner handles, 44 px touch targets) and a ↻ 90° button. **Use whole image** skips the crop. Trimming the table and background around the receipt is the biggest single accuracy gain.
+3. **Preprocess** with a plain `<canvas>` (`src/scan/preprocess.ts`):
+   - load with `createImageBitmap(file, { imageOrientation: 'from-image' })` so EXIF rotation is applied,
+   - apply the crop and rotation, then scale so the long edge is 1600–2000 px,
+   - grayscale → contrast stretch (2nd–98th percentile) → adaptive threshold (mean of a ~31 px window, minus a small constant) to black-on-white.
+4. **OCR** (`src/scan/ocr.ts`): `createWorker('eng', 1, { workerPath, corePath, langPath, logger })` from `tesseract.js`, with paths from 9.3. Set `tessedit_pageseg_mode` to `6` (single uniform block) and `preserve_interword_spaces` to `1`. A progress bar is driven by `logger` (`progress` 0–1), with a **Cancel** button that terminates the worker. Reuse the worker for later scans in the same session.
+5. **Parse** (`src/scan/parseReceipt.ts`, a pure function `parseReceipt(lines: {text, confidence}[], currency) → ReceiptDraft`, unit-tested on text fixtures):
+   - **Price lines**: a trailing amount, `/^(.*?)[\s.]+[^\d-]?(-?\d{1,5}(?:[.,]\d{1,3})?)\s*[A-Z]{0,2}$/`, interpreted with the currency's decimals (for 2-decimal currencies, require exactly 2 decimals). The optional trailing letters cover tax-code flags like `T`, `F`, `TX`.
+   - **Quantities**: a leading `2 x`, `2x`, `2 @`, or a bare `2 ` before a name → `quantity: 2`. The printed line total is kept as the price.
+   - **Totals section**: keyword matching, case-insensitive and tolerant of common OCR substitutions (`0↔O`, `1↔l/I`, `5↔S`, `8↔B`): `sub ?total`; `tax|vat|gst|hst`; `tip`; `gratuity|service( charge)?`; `discount|comp|coupon|promo`; `total|amount due|balance( due)?`. These set `Adjustments` / `printedTotal`, never items. A line matching `tip` with `%` but no amount is ignored.
+   - **Negative lines** (e.g. `-5.00 promo`) add to `discount`.
+   - **Noise filtering**: drop lines with no price and lines matching card numbers (`\*{2,}\d{4}`), dates/times, phone numbers, `change`, `cash`, `visa|mastercard|amex|debit|credit`, `auth`, `table`, `server`, `guests`, `thank you`.
+   - **Modifiers**: a line starting with `+` or indented more than its predecessor, with a price, is merged into the item above (name gets " + avocado", price is added).
+   - **Confidence**: Tesseract's per-line confidence is copied onto each item; lines below 70 are flagged.
+6. **Validate & convert**: Zod schema → integer minor units → `Item[]` (`source: 'scan'`), plus tax, service charge, discount, and printed total.
 7. **Review screen** (always shown, never auto-committed):
-   - Receipt thumbnail (tap to zoom) beside the editable item list.
-   - Low-confidence rows highlighted in amber; one-tap delete for junk rows.
-   - **Reconciliation check**: `Σ items` vs the printed subtotal, and the computed total vs the printed total. A green ✓ when they match; otherwise an amber banner with the difference and quick fixes ("Add as unlisted item", "Edit items").
-   - "Looks good →" goes straight to **People** (or to **Assign** if people already exist).
+   - Receipt thumbnail (tap to zoom) above or beside the editable item list.
+   - Low-confidence rows highlighted in amber; one-tap delete for junk rows; inline edit for name and price.
+   - **Reconciliation**: Σ items vs the printed subtotal (if found), and the computed bill total vs the printed total (if found). A green ✓ when they match; otherwise an amber banner with the difference and quick fixes: **Add as "Unlisted item"** / **Edit items**.
+   - **Add to current items** / **Replace current items** (only when items already exist).
+   - **Looks good →** goes to **People**, or to **Assign** if people already exist.
+   - If OCR finds no price lines at all: "We couldn't find any items on this receipt", with **Try again** / **Enter manually**.
 
-### 7.2 Honest expectations
+### 9.2 Honest expectations
 On-device OCR is good, not perfect. Crumpled, faded, or angled receipts will need some edits. The design handles this with crop, contrast cleanup, low-confidence highlighting, and reconciliation, so the review step is quick rather than frustrating. Manual entry stays one tap away at every point.
 
-### 7.3 Offline & self-hosting
-By default, tesseract.js downloads its worker, WASM core, and language data from a public CDN on first use. Tabby instead serves them itself, and does it **without any setup step** (section 1.3):
-- The worker and WASM core come from the `tesseract.js` / `tesseract.js-core` npm packages. The English language data comes from the `@tesseract.js-data/eng` npm package. All three are ordinary dependencies, so `npm install` fetches them.
-- A small Vite plugin (`vite-plugin-static-copy`) serves those files from `node_modules` under `/tesseract/` in both `npm run dev` and `npm run build`. Nothing is copied by hand, and there are no `postinstall` scripts.
-- `ocr.ts` points `workerPath`, `corePath`, and `langPath` at `/tesseract/`.
-- If the language-data package ever proves unreliable, the fallback is to commit `eng.traineddata.gz` (~2 MB) directly into `public/tesseract/`. That still requires no setup.
+### 9.3 Offline & self-hosting (zero setup)
+By default, tesseract.js downloads its worker, WASM core, and language data from a public CDN. Tabby serves them itself instead, **without any setup step**:
 
-That gives:
-- no third-party network requests,
-- scanning that works offline after the first load,
-- about 2–4 MB of assets (English "fast" model), loaded **only** when the user first taps *Scan receipt*. The main bundle is unaffected.
+| Asset | Source in `node_modules` | Served at |
+|---|---|---|
+| Worker | `tesseract.js/dist/worker.min.js` | `/tesseract/worker.min.js` |
+| WASM core (all variants; the library picks SIMD/LSTM at runtime) | `tesseract.js-core/tesseract-core*.wasm.js` and `*.wasm` | `/tesseract/core/` |
+| English data (~3 MB, best_int) | `@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz` | `/tesseract/lang/eng.traineddata.gz` |
 
-### 7.4 Privacy
-- The image is processed in memory and never stored or uploaded. Only a small thumbnail is kept, for the review screen, until the user leaves it.
+- `vite-plugin-static-copy` in `vite.config.ts` copies these targets. It serves them during `npm run dev` and copies them into `dist/` on `npm run build`. Nothing is copied by hand, there are no `postinstall` scripts, and `public/` holds no OCR files.
+- `ocr.ts` sets `workerPath: '/tesseract/worker.min.js'`, `corePath: '/tesseract/core'`, `langPath: '/tesseract/lang'`, `gzip: true`.
+- First scan downloads ~7 MB from the local server (core + language data); the browser caches it afterwards. These assets load **only** on first scan; the main bundle is unaffected.
+- **Fallback** if the language-data package misbehaves: commit `eng.traineddata.gz` into `public/tesseract/lang/`. That still requires no setup.
 
----
-
-## 8. Stand-Out Features
-
-Ranked by impact versus effort. **Bold = recommended for the first submission.** None require keys or services.
-
-### 8.1 **Fair vs. Even toggle** *(low effort, high signal)*
-On the Summary, flip between proportional and even splits, with per-person differences. It answers the "only had a salad" prompt head-on and shows product thinking visually.
-
-### 8.2 **Share link — no backend** *(medium effort, high wow)*
-Serialize the bill → `lz-string` compress → put it in the URL hash: `…/#b=N4Ig…`. Friends open it on their phones, **tap their own name**, and see only their total and items, plus a payment button. There's no server and no accounts, so it stays within the brief's "client-side" rule. The link is also shown as a **QR code**, generated locally, so the table can scan the organizer's screen.
-
-### 8.3 **Pass-the-phone claim mode** *(medium effort, real-world)*
-"Who had what?" → the phone shows *"Hand to Alex"* → Alex taps their items (shared items show "+ split") → *"Hand to Sam"* … → Summary. It turns the slowest part of splitting a bill into a 20-second game, and directly answers "would you actually use this at dinner?"
-
-### 8.4 **Payment request links** *(low effort)*
-If a payer is set, each person's card gets a **Pay {payer}** button. These are plain URLs: no API, no keys, no integration.
-- Venmo: `https://venmo.com/{handle}?txn=pay&amount={x}&note={title}`
-- Cash App: `https://cash.app/${cashtag}/{x}`
-- Fallback: copy "You owe Jordan $23.47 for Friday at Nopa".
-
-The payer's handles are saved locally after the first entry.
-
-### 8.5 "Treat" someone *(low effort, delightful)*
-Mark a birthday person; their share is redistributed across everyone else proportionally. A 🎂 shows on their card.
-
-### 8.6 **Penny-perfect reconciliation** *(already in the core; make it visible)*
-A subtle "✓ Adds up to $187.43 exactly" badge. Reviewers who check the math will notice; most split apps end up a cent off.
-
-### 8.7 Live "remaining" meter
-A progress bar on the Assign step showing $ assigned / $ total. It turns green at 100%, so users know when they're done.
-
-### 8.8 Bill history
-Recent bills are saved locally ("Friday at Nopa — $187.43 — 4 people"), so you can reopen one when someone asks "what did I owe again?"
-
-### 8.9 Polish checklist
-- Mobile-first, thumb-reachable primary actions, 44px tap targets.
-- Dark mode (restaurants are dim).
-- Undo snackbar for deletes.
-- `Intl.NumberFormat` currency formatting; locale-aware decimal input.
-- Keyboard-only manual entry flow on desktop.
-- Haptic tick (`navigator.vibrate`) on assignment where supported.
-- Accessible: labelled controls, visible focus, and avatar chips show initials so color isn't the only signal.
-
-### 8.10 Stretch / "another hour" candidates
-- PWA install + full offline caching.
-- Automatic receipt edge detection (perspective correction) to replace the manual crop.
-- Item-level "who's drinking?" bulk select (assign all drinks to the drinkers in one tap).
-- Multi-currency (travel) with a manually entered exchange rate.
-- Tap a scanned item to highlight its line on the receipt image (Tesseract already returns the line positions needed).
+### 9.4 Privacy
+The image is processed in memory and never stored or uploaded. A downscaled thumbnail is kept only while the review screen is open.
 
 ---
 
-## 9. Project Structure
+## 10. Stand-Out Features (all in scope)
+
+### 10.1 Fair vs. Even toggle
+A segmented control on the Summary: **Fair** (default, section 8.1) / **Even** (8.2). In Even mode, each card shows the difference from Fair: "+$6.20 vs fair" in muted red, "−$14.20" in muted green. A one-line explainer under the toggle: "Fair = you pay for what you had, plus your share of tax & tip."
+
+### 10.2 Share link + QR (no backend)
+- **Share link** button → serialize a *share payload* (the bill minus `paid`/history; names, items, amounts, currency, adjustments, treats, payer, and the payer's pay handles) → `lz-string` `compressToEncodedURIComponent` → `${origin}${pathname}#b=<data>`.
+- The **QR code** (generated locally with `qrcode`, as SVG) is shown in a sheet along with **Copy link** and **Share**. If the payload is too large for a QR code (> ~2,000 characters), only the link is offered, with a note.
+- **Opening a link** (`#b=` present) shows a **read-only Viewer**:
+  1. "Who are you?" → a grid of name chips.
+  2. That person's card: total, items, breakdown, and **Pay {payer}** buttons.
+  3. "See everyone" expands all cards. **Save a copy to edit** imports the bill into the viewer's own storage (it doesn't overwrite their current bill without asking).
+  - Payloads are Zod-validated; an invalid link shows "This link looks broken" with a button to open Tabby normally.
+  - No splash on the viewer.
+- **Reachability**: see open item P1 (section 15). A link only works if the friend's phone can reach the URL the app is served from.
+
+### 10.3 Pass-the-phone claim mode
+Started from Assign ("👋 Pass the phone"):
+1. "Hand the phone to **Alex**" (full-screen, large name, **I'm Alex** button).
+2. Alex sees every item as a large tappable row and taps what they had. Items others already claimed show those people's avatars, and tapping one adds Alex as a sharer.
+3. **Done → Hand to Sam** … until everyone has had a turn (any person can be skipped).
+4. A wrap-up screen lists unclaimed items ("Who had these?") with chip pickers and a **Split evenly among everyone** option. Then go to the Summary.
+- Items claimed by several people become even splits. This mode writes to the same `shares` data as normal assignment.
+
+### 10.4 Payment request links
+On the Summary, if a payer is set, each non-payer card shows **Pay {payer}** buttons. The payer's handles are entered once (prompted the first time) and saved in preferences.
+- Venmo (USD only): `https://venmo.com/{handle}?txn=pay&amount={x.xx}&note={encoded title}`
+- Cash App (USD, GBP): `https://cash.app/${cashtag}/{x.xx}`
+- Always available: **Copy request** → "Hey Sam, your share of Friday dinner is $41.88 — pay Jordan 🙏".
+
+### 10.5 Treat someone
+On People or Summary: a 🎂 toggle per person. Their share is spread across everyone else (8.1 step 6). Their card shows "🎂 On us!" and each covering card shows "+$X for Sam's treat".
+
+### 10.6 Penny-perfect badge
+The Summary footer reads "✓ Adds up to $187.43 exactly" when `reconciles` is true. If a printed total exists and differs, it shows an amber note instead: "Receipt says $188.00 — $0.57 difference" with **Fix** (jumps to receipt totals).
+
+### 10.7 Remaining meter
+A progress bar at the top of Assign: "$142.00 of $154.00 assigned". It turns green with a ✓ at 100%.
+
+### 10.8 Bill history
+Menu → **History**: a list of past bills ("Friday dinner · $187.43 · 4 people · Oct 8"). Tap to open read/write; swipe or ✕ to delete (with Undo). The list holds up to 20 bills, dropping the oldest. History also feeds "Recent names" in People.
+
+### 10.9 Settings
+Menu → **Settings**: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Clear all data** (with confirmation), About (version, MIT license, GitHub link).
+
+### 10.10 Polish checklist (definition of done for M7)
+- Mobile-first layout, thumb-reachable primary actions, **≥ 44 px tap targets**.
+- Dark mode following the system by default (restaurants are dim).
+- Undo snackbar for destructive actions.
+- `Intl` currency formatting; locale-aware money input (4.3); `inputmode="decimal"` on price fields.
+- Full keyboard flow on desktop (Tab order, Enter to add, Esc closes sheets).
+- Haptic tick (`navigator.vibrate(10)`) on chip toggle where supported.
+- Accessibility: WCAG 2.1 AA contrast; labelled controls; visible focus rings; avatar chips show initials so color isn't the only signal; sheets trap focus and restore it on close.
+- Empty states for every step, with a single clear call to action.
+- No layout shift when the bottom bar's values change (tabular numerals).
+
+### 10.11 Out of scope (README "what I'd do with another hour" candidates)
+- PWA install + full offline caching (`vite-plugin-pwa`).
+- Automatic receipt edge detection and perspective correction instead of a manual crop.
+- "Who's drinking?" bulk select to assign all drinks to the drinkers in one tap.
+- Currency conversion with an exchange rate (travel).
+- Tap a scanned item to highlight its line on the receipt image (Tesseract already returns line positions).
+
+---
+
+## 11. Sample Receipt
+
+`src/sample/sampleBill.ts` exports the sample used by **Try a sample receipt** and by tests:
+
+| Item | Qty | Price |
+|---|---|---|
+| Truffle Fries | 1 | 12.00 |
+| Burrata | 1 | 16.50 |
+| Margherita Pizza | 1 | 19.00 |
+| Steak Frites | 1 | 34.00 |
+| Caesar Salad | 1 | 14.00 |
+| House Red (bottle) | 1 | 48.00 |
+| Sparkling Water | 2 | 8.00 |
+| Tiramisu | 1 | 11.00 |
+
+Subtotal 162.50 · Tax 14.42 (8.875%) · Printed total 176.92 · Currency USD.
+The sample loads **items only**. People and assignments are left for the user to try, but the People step offers a **"Add sample people"** chip (Alex, Sam, Priya, Jordan).
+
+The scanner's **"Try scanning a sample"** link renders this same receipt as an image at runtime (`src/sample/renderReceipt.ts` draws monospace text onto a canvas, adding slight rotation and noise). That image goes through the real OCR pipeline, so there are no binary or copyrighted receipt images in the repo.
+
+---
+
+## 12. Project Structure
 
 ```
 Tabby/
 ├── TABBY_DESIGN.md          ← this document
-├── README.md                ← run instructions, screenshots, AI-tools note, "another hour"
-├── LICENSE
-├── index.html               ← includes the inline splash markup
+├── README.md                ← getting started, features, screenshots, AI-tools note, "another hour", decision log link
+├── LICENSE                  ← MIT, Copyright (c) 2026 Jeff Fulton
+├── index.html               ← inline splash markup + early-hide script
 ├── package.json
-├── vite.config.ts           ← copies tesseract assets into public/tesseract
-├── tailwind.config.ts
+├── vite.config.ts           ← react, tailwind, static-copy of tesseract assets
+├── eslint.config.js
 ├── public/
-│   ├── logo.svg             ← favicon / touch icon
-│   └── tesseract/           ← self-hosted worker, core, eng.traineddata
+│   └── logo.svg             ← favicon / touch icon
 ├── src/
 │   ├── main.tsx
-│   ├── App.tsx              ← stepper shell + bottom bar
+│   ├── index.css            ← Tailwind v4 import + @theme tokens
+│   ├── App.tsx              ← shell: header, step router, bottom bar, viewer switch
 │   ├── brand/
-│   │   ├── Logo.tsx         ← inline SVG logo
-│   │   └── useSplash.ts     ← splash timing / dismissal
+│   │   ├── Logo.tsx
+│   │   └── useSplash.ts
 │   ├── steps/
 │   │   ├── ReceiptStep.tsx
 │   │   ├── PeopleStep.tsx
 │   │   ├── AssignStep.tsx
 │   │   ├── TaxTipStep.tsx
 │   │   └── SummaryStep.tsx
-│   ├── components/          ← PersonChip, ItemCard, MoneyInput, Reconciliation, …
+│   ├── features/
+│   │   ├── CurrencySheet.tsx
+│   │   ├── PassThePhone.tsx
+│   │   ├── ShareSheet.tsx
+│   │   ├── Viewer.tsx       ← read-only shared-link view
+│   │   ├── History.tsx
+│   │   └── Settings.tsx
+│   ├── components/          ← PersonChip, ItemCard, MoneyInput, Sheet, Snackbar, Meter, …
 │   ├── scan/
-│   │   ├── CropView.tsx     ← crop rectangle + rotate
-│   │   ├── preprocess.ts    ← orient / scale / grayscale / threshold (canvas)
-│   │   ├── ocr.ts           ← lazy tesseract.js worker
-│   │   ├── parseReceipt.ts  ← OCR text → draft items + totals
-│   │   └── schema.ts        ← Zod schema + toBillDraft()
+│   │   ├── CropView.tsx
+│   │   ├── ReviewScreen.tsx
+│   │   ├── preprocess.ts
+│   │   ├── ocr.ts
+│   │   ├── parseReceipt.ts
+│   │   └── schema.ts
 │   ├── lib/
-│   │   ├── money.ts         ← parse/format cents, largest-remainder allocate()
-│   │   ├── split.ts         ← computeSplit() — the core
-│   │   └── share.ts         ← encode/decode share links, payment URLs
+│   │   ├── money.ts         ← allocate(), parseMoney(), formatMoney(), minorDigits()
+│   │   ├── split.ts         ← computeSplit()
+│   │   ├── share.ts         ← encode/decode share links, payment URLs
+│   │   └── currencies.ts    ← Intl-based currency list + common list
 │   ├── store/
-│   │   └── billStore.ts     ← Zustand + persist
+│   │   ├── billStore.ts
+│   │   └── prefsStore.ts
 │   └── sample/
-│       └── sampleReceipt.ts ← demo bill + a sample receipt image for the scanner
+│       ├── sampleBill.ts
+│       └── renderReceipt.ts
 └── tests/
     ├── money.test.ts
     ├── split.test.ts
-    └── parseReceipt.test.ts
+    ├── share.test.ts
+    └── parseReceipt.test.ts  ← fixtures: realistic OCR text, incl. typos and noise
 ```
 
 ---
 
-## 10. Security & Constraints
+## 13. Milestones
 
-- **No backend, no API keys, no external services.** The app makes no network requests at runtime other than loading its own files.
-- **Share links** contain bill data only (names, items, amounts), never images. URL hash fragments aren't sent to servers.
-- **Input safety**: all user and OCR strings are rendered as text (React escaping); no `dangerouslySetInnerHTML`. Share-link payloads are Zod-validated before use.
-
----
-
-## 11. Milestones
-
-Each milestone ends in a working app and a commit.
+Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pushed commit.
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | Scaffold + splash | Vite + React + TS + Tailwind; logo + splash; `npm install && npm run dev` works; repo public with LICENSE |
-| M1 | Money core | `money.ts` + `split.ts` with Vitest tests passing (invariants in 6.2) |
-| M2 | Manual flow | Input-method choice screen; steps 1–5 work end to end with manual entry, sample receipt, persistence |
-| M3 | Assign UX | Custom weights, Everyone, split remaining, per-person mode, qty expansion |
-| M4 | **Image upload** | Take photo (mobile) + upload (all devices, drag/drop/paste) → crop → preprocess → on-device OCR → parse → review/reconcile; self-hosted assets |
-| M5 | Stand-outs | Fair vs Even, share link + QR, payment links, pass-the-phone |
-| M6 | Polish & submit | Dark mode, a11y pass, README, screenshots/recording, AI-tools note |
+| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; zero-setup check passes |
+| M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat) with tests for every invariant in 8.4 |
+| M2 | **Manual flow** | Shell (2.1); input-method choice (Scan card disabled "Coming soon"); steps 1–5 end to end with manual entry; sample bill; persistence; empty states |
+| M3 | **Currency picker** | Section 4 complete, including 0- and 3-decimal currencies, locale input parsing, and rounding notice |
+| M4 | **Assign UX** | Custom weights sheet, Everyone, Split remaining, By person, quantity expansion, remaining meter, undo |
+| M5 | **Receipt scanning** | Take photo (touch) + Upload (all; drag/drop/paste) → crop → preprocess → OCR → parse → review/reconcile; self-hosted assets; "Try scanning a sample"; parser tests |
+| M6 | **Stand-outs** | Fair vs Even, Treat, penny-perfect badge, share link + QR + Viewer, pass-the-phone, payment links, history, settings |
+| M7 | **Polish & submit** | Polish checklist (10.10); README complete (features, screenshots/GIF, AI-tools note, "another hour", decision log); fresh-clone zero-setup check (section 17) |
 
 ---
 
-## 12. Open Questions (for review)
+## 14. Resolved Decisions
 
-| # | Question | Proposed default |
+| # | Decision | Answer |
 |---|---|---|
-| Q1 | **Implementation scope now** — all of M0–M6, or stop at a checkpoint (e.g. after M4) for review? | Build M0–M6, committing and pushing per milestone |
-| Q2 | **Logo concept** — (a) tabby-cat face with receipt-line stripes, (b) torn receipt with a dashed cut line, (c) "Tabby" wordmark only | (a) |
-| Q3 | **License** for the public repo — MIT, Apache-2.0, or none (visible but not reusable) | MIT |
-| Q4 | **Currency** — USD only for v1, or a currency picker? | USD default with `Intl` formatting; picker is a stretch item |
+| D1 | Implementation scope | **Build everything**: M0–M7 |
+| D2 | Logo | **Tabby-cat face with receipt-line stripes** (section 3.1) |
+| D3 | License | **MIT**, `Copyright (c) 2026 Jeff Fulton` |
+| D4 | Currency | **Currency picker** (section 4), USD default |
+| D5 | AI / paid services | **None.** No API keys; receipt scanning is on-device (Tesseract.js) |
+| D6 | Setup | **Zero setup**: clone → `npm install && npm run dev` |
+| D7 | Input methods | User chooses **Scan** (Take photo on mobile / Upload on any device) or **Manual**; both can be mixed |
+| D8 | Repo visibility | **Public** (done in M0) |
 
 ---
 
-## 13. Submission Checklist (from the brief)
+## 15. Open Items (need an answer before the milestone noted)
+
+| # | Question | Proposed default | Needed by |
+|---|---|---|---|
+| P1 | **Share-link reachability.** The app runs on `localhost`, which friends' phones can't open, so share links and QR codes won't work as-is. Options: (a) make the dev server listen on the local network (`server.host: true`) and have Vite inject the computer's LAN address, so the QR points to e.g. `http://192.168.1.20:5173` — still zero setup; works for anyone on the same Wi-Fi. (b) additionally add an automatic, free **GitHub Pages** deployment (GitHub Actions) so there's a public URL anyone can open. | (a), plus (b) | M6 |
+| P2 | **Quick "Split evenly" express mode.** A third card on Step 1: enter just the total (or scan it) + number of people + tip → done in 3 taps, with no items. | Include | M6 |
+| P3 | **Round up** option on the Summary: round each person's total up to the nearest whole unit, with the extra going to the tip. | Include, off by default | M6 |
+| P4 | **First-run hints**: three dismissible coach marks (choose input → tap chips to assign → share). | Include | M7 |
+
+---
+
+## 16. Decision Log
+
+Implementers append here any decision made where this spec was silent (date · decision · reason).
+
+| Date | Decision | Reason |
+|---|---|---|
+| — | — | — |
+
+---
+
+## 17. Submission Checklist (from the brief)
 
 - [ ] Public GitHub repo link
-- [ ] Screen recording or screenshots of the full flow (manual *and* scan)
-- [ ] A few sentences on "what I'd do with another hour" (draw from 8.10)
+- [ ] Screen recording or screenshots of the full flow (manual *and* scan, on a phone-sized viewport)
+- [ ] A few sentences on "what I'd do with another hour" (draw from 10.11)
 - [ ] Note on AI tools used and how (Claude Code for all implementation; no AI or paid services inside the app)
 - [ ] **Zero-setup check:** fresh `git clone` into an empty folder → `npm install && npm run dev` → the full flow works, *including receipt scanning*, with no other steps, no `.env`, and no warnings asking for configuration
 - [ ] README's "Getting started" is exactly those commands, with nothing else required
+- [ ] `npm run build`, `npm test`, `npm run lint` all pass
+
+---
+
+## Appendix A — The Original Brief
+
+> **Take-Home Project: Split the Bill**
+>
+> **The Task** — Build a web app that helps a group of friends split a restaurant bill. Spend about 30 minutes on this. It's fine to let it run in the background — we care about the output, not whether you timed yourself. This is not a test of whether you can build everything from memory. It's a test of how you build with AI. It is better if you actually didn't write any code manually and it was written by Claude Code, Codex or any other tool.
+>
+> **Starting Point** — At minimum, your app should let users:
+> - Start by manually entering the items and image upload is a nice-to-have. Don't attempt the image upload until you are done with the full functionality.
+> - Add people to the bill
+> - Assign items to people (including shared items)
+> - Handle tax and tip
+> - Show a final summary of what each person has to pay
+> - Keep it client-side. No backend is needed, and there is no need to create users or integrate authentication.
+>
+> **Make It Yours** — The spec above is intentionally minimal. Once the basics work, make it better. Some directions you could take it (not an exhaustive list):
+> - How do you handle the friend who "only had a salad"?
+> - What if two people shared an entree?
+> - What's the fastest path from receipt to "everyone knows what they owe"?
+> - Could you actually use this next time you're at dinner?
+>
+> Don't try to do everything. Pick what excites you and do it well.
+>
+> **Tech Stack** — Use whatever you're comfortable with. React or Next.js is the path of least resistance, but we are fine with other choices.
+>
+> **What We're Looking For**
+> - Product instinct — When the spec is ambiguous, what decisions do you make? Do they feel thoughtful?
+> - Working software — Does it actually work end-to-end? A polished small scope beats a broken big scope.
+> - Tool fluency — How effectively do you use AI tools to move fast? Do you iterate or try to get it perfect in one shot?
+> - UI/UX care — Is it something you'd hand your phone to a friend at dinner? Small touches matter.
+> - Code quality — Clean, readable code. Not over-engineered, not hacked together.
+>
+> We will not be evaluating: memorized algorithms or trivia; test coverage percentage; whether you used any specific library.
+>
+> **Submission** — Send us: (1) A link to the GitHub repo (or zip the project and email it); (2) A short screen recording or screenshots of it working; (3) A few sentences on what you'd do with another hour; (4) Include a brief note on which AI tools you used and how.
+>
+> No need to deploy — we'll run it locally. Just make sure `npm install && npm run dev` works.
+>
+> Good luck — and have fun with it. We mean that.
