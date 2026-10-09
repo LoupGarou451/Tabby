@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Avatar, Button, Card, EmptyState, PersonChip, Segmented, Sheet } from '../components/ui'
 import { Hint } from '../components/Hint'
 import { cx } from '../lib/cx'
+import { stepBlocker } from '../lib/steps'
 import { allocate, formatMoney } from '../lib/money'
 import type { Item, Person } from '../lib/types'
 import { isAssigned, useBill } from '../store/billStore'
@@ -118,7 +119,8 @@ export function AssignStep() {
           onExit={() => setPassing(false)}
           onDone={() => {
             setPassing(false)
-            setStep('summary')
+            // Only skip ahead when everything is claimed; otherwise stay to finish assigning.
+            if (!stepBlocker(useBill.getState().bill, 'assign')) setStep('summary')
           }}
         />
       )}

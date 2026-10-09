@@ -174,7 +174,9 @@ function WrapUp({
         <Button onClick={splitRemainingEvenly}>➗ Split the rest evenly among everyone</Button>
       )}
       <Button variant="primary" className="min-h-12" onClick={onDone}>
-        See who owes what →
+        {unclaimed.some((i) => !isAssigned(i, bill.people))
+          ? 'Done — finish assigning'
+          : 'See who owes what →'}
       </Button>
     </>
   )

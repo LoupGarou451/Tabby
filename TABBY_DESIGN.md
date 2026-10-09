@@ -116,7 +116,16 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
   - If the bill is empty, it just returns to Step 1 (no prompt).
 - **Header menu (☰)**: New bill (same confirmation as above) · Bill history · Settings · About (version, license, GitHub link). Each item opens its sheet.
 - **Bill title**: not shown in the header. It defaults to a neutral date label — `"Bill · Oct 9"` — and is editable on the Summary (Step 5). It's used in history, share links, the share text, and payment notes.
-- **Steps are freely navigable** by tapping the dots. Nothing is lost when moving between steps.
+- **Step requirements (validation).** Each step requires only the minimum data needed to calculate final totals. Until it's met, **Next** is disabled and the bottom bar says what's missing (in the warning colour); step dots *after* an incomplete step are disabled too. Going back is always allowed, and nothing is lost when moving between steps.
+
+  | Step | Required to continue | Message when missing |
+  |---|---|---|
+  | 1. Receipt | at least one item | "Add at least one item to continue" |
+  | 2. People | at least one person | "Add at least one person to continue" |
+  | 3. Assign | splitting by item: every item has at least one person · splitting evenly: nothing | "Assign every item to continue (2 left)" |
+  | 4. Tax & tip | nothing (no tax / no tip is valid) | — |
+
+  The rules live in one pure, tested function (`stepBlocker(bill, step)` in `src/lib/steps.ts`). Screens reached anyway (e.g. a bill reopened from history after people were removed) keep their empty states and the Summary's unassigned banner as a fallback.
 - **Primary action** is always bottom-right, within thumb reach.
 
 ### 2.2 Flow
@@ -755,6 +764,7 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 | D19 | Ending the flow | **Done — save to history** on the Summary archives the bill and returns home |
 | D20 | Default bill name | Neutral date label, "Bill · Oct 9" |
 | D21 | Default tip | **0%** on new bills; the Settings value is shown as a "Suggested" preset. Leftover cents in a split (e.g. $5 ÷ 3 = $1.67 / $1.67 / $1.66) stay as they are, without a note |
+| D22 | Step validation | Each step requires the minimum data for final totals (see 2.1); Next and later dots are disabled with a reason |
 
 ---
 
@@ -779,6 +789,7 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | Step validation (D22): Next and later step dots are disabled until the current step has the minimum data for final totals. One person is enough (a bill for one is still calculable). | User report: it was possible to reach later steps with no items. |
 | 2026-10-09 | New bills start at 0% tip (D21). | User report: a $5 item shared by 3 via pass-the-phone showed a $6.00 total — the split was right, but the 20% default tip had been applied silently before the Tax & tip step. |
 | 2026-10-09 | Canvas resizing in `preprocess.ts` uses `imageSmoothingQuality = 'high'`; a failure to load the OCR engine shows its own message ("Couldn't load the receipt reader…") instead of the generic error. | User report: a receipt that scanned before stopped working. The default ("low") resampling made OCR read the total "27.35" as "21.35", so the review flagged a $6.00 mismatch (verified at 1000–2400 px; "high" reads it correctly). A stopped dev server also makes the first scan fail, which previously looked like a generic bug. |
 | 2026-10-09 | M8 feedback round: D13–D20. Quick Split code, its data (`mode`, `quick`), and its share-link fields were removed rather than hidden; `splitMode` was added to the bill (old saves default to `'fair'`). | Keep one clear way to split; no dead code. |

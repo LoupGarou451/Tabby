@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 
-export const STEPS = ['receipt', 'people', 'assign', 'tip', 'summary'] as const
-export type Step = (typeof STEPS)[number]
+import { STEPS, type Step } from '../lib/steps'
+
+export { STEPS, type Step }
 export type SheetName =
   'menu' | 'currency' | 'history' | 'settings' | 'about' | 'share' | 'startOver' | null
 

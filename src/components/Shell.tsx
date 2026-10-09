@@ -6,6 +6,7 @@ import { STEPS, useUi, type Step } from '../store/uiStore'
 import { useSplit } from '../store/useSplit'
 import { Button, Sheet } from './ui'
 import { cx } from '../lib/cx'
+import { canReach, stepBlocker } from '../lib/steps'
 
 const STEP_LABELS: Record<Step, string> = {
   receipt: 'Receipt',
@@ -113,6 +114,7 @@ export function BottomBar() {
   const fmt = (m: number) => formatMoney(m, bill.currency)
   const index = STEPS.indexOf(step)
   const next = STEPS[index + 1]
+  const blocker = stepBlocker(bill, step)
 
   const unassigned = bill.items.filter((i) => !isAssigned(i, bill.people))
   const unassignedTotal = unassigned.reduce((s, i) => s + i.price, 0)
@@ -141,9 +143,24 @@ export function BottomBar() {
     >
       <div className="mx-auto flex max-w-[480px] flex-col gap-2 px-3 pt-2 pb-2">
         <div className="flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate text-sm font-medium tabular-nums">{status}</span>
+          <span
+            id="step-status"
+            role="status"
+            className={cx(
+              'min-w-0 text-sm font-medium tabular-nums',
+              blocker ? 'text-warn' : 'truncate',
+            )}
+          >
+            {blocker ?? status}
+          </span>
           {next && (
-            <Button variant="primary" onClick={() => setStep(next)} className="shrink-0">
+            <Button
+              variant="primary"
+              onClick={() => setStep(next)}
+              disabled={!!blocker}
+              aria-describedby={blocker ? 'step-status' : undefined}
+              className="shrink-0"
+            >
               Next: {STEP_LABELS[next]} →
             </Button>
           )}
@@ -154,9 +171,11 @@ export function BottomBar() {
               <button
                 type="button"
                 onClick={() => setStep(s)}
+                // Later steps unlock once every step before them is complete.
+                disabled={!canReach(bill, s)}
                 aria-current={s === step ? 'step' : undefined}
                 className={cx(
-                  'flex min-h-9 items-center gap-1.5 rounded-full px-2 text-xs font-medium',
+                  'flex min-h-9 items-center gap-1.5 rounded-full px-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40',
                   s === step ? 'text-ink' : 'text-muted',
                 )}
               >
