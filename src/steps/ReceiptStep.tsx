@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Button, Card, MoneyInput } from '../components/ui'
 import { cx } from '../lib/cx'
-import { formatMoney, type Money } from '../lib/money'
+import { formatMoney, formatPlain, type Money } from '../lib/money'
 import type { Item } from '../lib/types'
 import { useBill } from '../store/billStore'
 import { usePrefs } from '../store/prefsStore'
@@ -229,7 +229,7 @@ function NewItemRow({
       <MoneyInput
         ref={priceRef}
         aria-label="New item price"
-        placeholder="0.00"
+        placeholder={formatPlain(0, currency)}
         value={price}
         allowEmpty
         currency={currency}

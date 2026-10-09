@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createBill, makeItem, makePerson, newId } from '../lib/bill'
-import { allocate } from '../lib/money'
+import { allocate, minorDigits } from '../lib/money'
 import { parseBill } from '../lib/schema'
 import type { Adjustments, Bill, Item, Person, QuickSplit } from '../lib/types'
 import { SAMPLE_PEOPLE, SAMPLE_TAX, SAMPLE_TOTAL, sampleItems } from '../sample/sampleBill'
@@ -140,7 +140,36 @@ export const useBill = create<BillState & BillActions>()(
 
         setTitle: (title) => change((b) => void (b.title = title)),
         setCurrency: (currency) => {
-          change((b) => void (b.currency = currency))
+          const { bill } = get()
+          const shift = minorDigits(currency) - minorDigits(bill.currency)
+          let rounded = false
+          // Keep the displayed numbers (12.50 stays 12.50); rescale to the new minor unit.
+          const rescale = (m: number, min = 0) => {
+            const exact = m * 10 ** shift
+            const next = Math.max(min, Math.round(exact))
+            if (next !== exact) rounded = true
+            return next
+          }
+          change((b) => {
+            b.currency = currency
+            if (shift === 0) return
+            b.items.forEach((i) => (i.price = rescale(i.price, 1)))
+            const a = b.adjustments
+            if (a.tax.mode === 'amount') a.tax.value = rescale(a.tax.value)
+            if (a.tip.mode === 'amount') a.tip.value = rescale(a.tip.value)
+            a.serviceCharge = rescale(a.serviceCharge)
+            a.discount = rescale(a.discount)
+            if (b.printedTotal !== undefined) b.printedTotal = rescale(b.printedTotal)
+            if (b.quick) {
+              b.quick.total = rescale(b.quick.total)
+              b.quick.tax = rescale(b.quick.tax)
+            }
+          })
+          if (rounded) {
+            const unit =
+              new Intl.DisplayNames(undefined, { type: 'currency' }).of(currency) ?? currency
+            set({ undo: { message: `Amounts rounded for ${unit}`, bill, history: get().history } })
+          }
           usePrefs.getState().set({ currency })
         },
 
@@ -283,7 +312,9 @@ export const useBill = create<BillState & BillActions>()(
 
         applyUndo: () => {
           const u = get().undo
-          if (u) set({ bill: u.bill, history: u.history, undo: null })
+          if (!u) return
+          set({ bill: u.bill, history: u.history, undo: null })
+          usePrefs.getState().set({ currency: u.bill.currency })
         },
         clearUndo: () => set({ undo: null }),
         clearAll: () => set({ bill: freshBill(), history: [], undo: null }),

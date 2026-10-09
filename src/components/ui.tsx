@@ -210,7 +210,11 @@ export function Sheet({
   useEffect(() => {
     const d = ref.current
     if (!d) return
-    if (open && !d.open) d.showModal()
+    if (open && !d.open) {
+      d.showModal()
+      // <dialog> focuses its first focusable (the close button); prefer a marked field.
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus()
+    }
     if (!open && d.open) d.close()
   }, [open])
   return (
@@ -219,7 +223,7 @@ export function Sheet({
       onClose={onClose}
       onClick={(e) => e.target === ref.current && onClose()}
       aria-label={title}
-      className="m-0 mt-auto w-full max-w-none bg-transparent p-0 backdrop:bg-black/40 sm:m-auto sm:max-w-[480px]"
+      className="m-0 mt-auto w-full max-w-none bg-transparent p-0 outline-none backdrop:bg-black/40 sm:m-auto sm:max-w-[480px]"
     >
       <div className="mx-auto max-h-[85dvh] w-full max-w-[480px] overflow-y-auto rounded-t-3xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-ink sm:rounded-3xl">
         <div className="mb-4 flex items-center justify-between">
