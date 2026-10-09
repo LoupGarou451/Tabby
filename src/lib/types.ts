@@ -38,7 +38,6 @@ export interface Bill {
   people: Person[]
   items: Item[]
   adjustments: Adjustments
-  printedTotal?: Money
   payerId?: string
   treatedIds: string[]
   paid: Record<string, boolean>

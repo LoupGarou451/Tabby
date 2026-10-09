@@ -22,7 +22,6 @@ export function ReviewScreen({
   const bill = useBill((s) => s.bill)
   const addItems = useBill((s) => s.addItems)
   const setAdjustments = useBill((s) => s.setAdjustments)
-  const setPrintedTotal = useBill((s) => s.setPrintedTotal)
   const setStep = useUi((s) => s.setStep)
   const setEditing = useUi((s) => s.setEditingItems)
   const [items, setItems] = useState<(DraftItem & { key: number })[]>(() =>
@@ -62,7 +61,6 @@ export function ReviewScreen({
     }
     if (draft.discount !== undefined) patch.discount = draft.discount
     setAdjustments(patch)
-    if (draft.total !== undefined) setPrintedTotal(draft.total - (draft.tip ?? 0))
     setEditing(false)
     setStep(bill.people.length ? 'assign' : 'people')
     onDone()

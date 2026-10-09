@@ -50,10 +50,6 @@ export function SummaryStep() {
   const hasUnassigned = mode === 'fair' && split.unassigned.total > 0
   const payer = bill.people.find((p) => p.id === bill.payerId)
   const noHandles = !handles.venmo && !handles.cashtag
-  const printedDiff =
-    bill.printedTotal !== undefined
-      ? bill.printedTotal - (split.itemsSubtotal - split.discount + split.tax + split.service)
-      : 0
 
   return (
     <div className="flex flex-col gap-4">
@@ -120,15 +116,6 @@ export function SummaryStep() {
         {split.reconciles && !hasUnassigned && (
           <span className="text-sm font-medium text-good">
             ✓ Adds up to {fmt(split.billTotal)} exactly
-          </span>
-        )}
-        {bill.printedTotal !== undefined && printedDiff !== 0 && (
-          <span className="text-sm text-warn">
-            Receipt says {fmt(bill.printedTotal)} before tip — {fmt(Math.abs(printedDiff))}{' '}
-            difference.{' '}
-            <button type="button" className="underline" onClick={() => setStep('receipt')}>
-              Fix
-            </button>
           </span>
         )}
         {payer && !noHandles && !editHandles && (

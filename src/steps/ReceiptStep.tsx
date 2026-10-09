@@ -261,13 +261,9 @@ function NewItemRow({
 function ReceiptTotals() {
   const bill = useBill((s) => s.bill)
   const setAdjustments = useBill((s) => s.setAdjustments)
-  const setPrintedTotal = useBill((s) => s.setPrintedTotal)
   const { adjustments: adj, currency } = bill
   const hasAny =
-    (adj.tax.mode === 'amount' && adj.tax.value > 0) ||
-    adj.serviceCharge > 0 ||
-    adj.discount > 0 ||
-    bill.printedTotal !== undefined
+    (adj.tax.mode === 'amount' && adj.tax.value > 0) || adj.serviceCharge > 0 || adj.discount > 0
   const [open, setOpen] = useState(hasAny)
 
   const row = (label: string, value: Money | null, onCommit: (v: Money | null) => void) => (
@@ -303,10 +299,6 @@ function ReceiptTotals() {
             setAdjustments({ serviceCharge: v ?? 0 }),
           )}
           {row('Discount', adj.discount || null, (v) => setAdjustments({ discount: v ?? 0 }))}
-          {row('Printed total', bill.printedTotal ?? null, (v) => setPrintedTotal(v ?? undefined))}
-          <p className="text-xs text-muted">
-            The printed total is only used to check that everything adds up.
-          </p>
         </div>
       )}
     </Card>

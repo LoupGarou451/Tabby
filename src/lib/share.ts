@@ -51,7 +51,6 @@ const wireSchema = z.object({
   ]),
   y: z.number().int().optional(), // payer index
   x: z.array(z.number().int()).optional(), // treated indexes
-  o: z.number().int().optional(), // printed total
   h: z.tuple([z.string(), z.string()]).optional(), // [venmo, cashtag]
 })
 type Wire = z.infer<typeof wireSchema>
@@ -82,7 +81,6 @@ export function encodeShare(bill: Bill, handles: PayHandles): string {
   if (bill.payerId && index.has(bill.payerId)) wire.y = index.get(bill.payerId)
   const treated = bill.treatedIds.filter((id) => index.has(id)).map((id) => index.get(id)!)
   if (treated.length) wire.x = treated
-  if (bill.printedTotal !== undefined) wire.o = bill.printedTotal
   if (handles.venmo || handles.cashtag) wire.h = [handles.venmo ?? '', handles.cashtag ?? '']
   // "Paid" checkmarks are the organizer's private bookkeeping, so they're never shared.
   return compressToEncodedURIComponent(JSON.stringify(wire))
@@ -118,7 +116,6 @@ function fromWire(w: Wire): SharePayload | null {
       serviceCharge: w.a[3],
       discount: w.a[4],
     },
-    printedTotal: w.o,
     payerId: w.y !== undefined ? people[w.y]?.id : undefined,
     treatedIds: (w.x ?? []).flatMap((k) => (people[k] ? [people[k].id] : [])),
     paid: {},

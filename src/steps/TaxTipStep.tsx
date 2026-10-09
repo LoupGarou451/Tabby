@@ -16,8 +16,8 @@ export function TaxTipStep() {
     adj.tipBase === 'preTax' ? amounts.itemsSubtotal : amounts.itemsSubtotal + amounts.tax
   const [addingGratuity, setAddingGratuity] = useState(false)
   const hasGratuity = adj.serviceCharge > 0
-  // Amounts read from a scan or typed into "Receipt totals" on Step 1.
-  const fromReceipt = bill.printedTotal !== undefined || bill.items.some((i) => i.source === 'scan')
+  // Tax and gratuity were read from a scanned receipt (still editable here).
+  const fromReceipt = bill.items.some((i) => i.source === 'scan')
   const receiptNote = (
     <p className="-mt-1 text-xs text-muted">Filled in from your receipt — edit if needed.</p>
   )

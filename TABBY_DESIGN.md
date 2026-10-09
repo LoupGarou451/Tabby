@@ -169,7 +169,7 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 - If items already exist when a new scan finishes, the review screen asks **"Add to current items"** (default) or **"Replace current items"**.
 - The last-used method is remembered and shown first next time (left card), but both cards are always visible.
 
-**Also on this step:** a collapsible **"Receipt totals (optional)"** panel: **Tax**, **Gratuity / service charge**, **Discount**, **Printed total** (used for reconciliation). A scan fills these in automatically, and they're the same values shown (and editable) on the Tax & tip step.
+**Also on this step:** a collapsible **"Receipt totals (optional)"** panel: **Tax**, **Gratuity / service charge**, **Discount**. A scan fills these in automatically, and they're the same values shown (and editable) on the Tax & tip step.
 
 ### Step 2 — People
 - Add by name (Enter adds and keeps focus). Each person gets an avatar chip: a color from a fixed 10-color palette (assigned in order, high contrast in both themes) + initials.
@@ -361,7 +361,6 @@ interface Bill {
   people: Person[];
   items: Item[];
   adjustments: Adjustments;
-  printedTotal?: Money;      // for reconciliation
   payerId?: string;
   treatedIds: string[];      // people whose share is covered by others (10.5)
   paid: Record<string, boolean>;
@@ -493,12 +492,12 @@ Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worke
 5. **Parse** (`src/scan/parseReceipt.ts`, a pure function `parseReceipt(lines: {text, confidence}[], currency) → ReceiptDraft`, unit-tested on text fixtures):
    - **Price lines**: a trailing amount, `/^(.*?)[\s.]+[^\d-]?(-?\d{1,5}(?:[.,]\d{1,3})?)\s*[A-Z]{0,2}$/`, interpreted with the currency's decimals (for 2-decimal currencies, require exactly 2 decimals). The optional trailing letters cover tax-code flags like `T`, `F`, `TX`.
    - **Quantities**: a leading `2 x`, `2x`, `2 @`, or a bare `2 ` before a name → `quantity: 2`. The printed line total is kept as the price.
-   - **Totals section**: keyword matching, case-insensitive and tolerant of common OCR substitutions (`0↔O`, `1↔l/I`, `5↔S`, `8↔B`): `sub ?total`; `tax|vat|gst|hst`; `tip`; `gratuity|service( charge)?`; `discount|comp|coupon|promo`; `total|amount due|balance( due)?`. These set `Adjustments` / `printedTotal`, never items. A line matching `tip` with `%` but no amount is ignored.
+   - **Totals section**: keyword matching, case-insensitive and tolerant of common OCR substitutions (`0↔O`, `1↔l/I`, `5↔S`, `8↔B`): `sub ?total`; `tax|vat|gst|hst`; `tip`; `gratuity|service( charge)?`; `discount|comp|coupon|promo`; `total|amount due|balance( due)?`. These set `Adjustments` (and the review screen's subtotal/total check), never items. A line matching `tip` with `%` but no amount is ignored.
    - **Negative lines** (e.g. `-5.00 promo`) add to `discount`.
    - **Noise filtering**: drop lines with no price and lines matching card numbers (`\*{2,}\d{4}`), dates/times, phone numbers, `change`, `cash`, `visa|mastercard|amex|debit|credit`, `auth`, `table`, `server`, `guests`, `thank you`.
    - **Modifiers**: a line starting with `+` or indented more than its predecessor, with a price, is merged into the item above (name gets " + avocado", price is added).
    - **Confidence**: Tesseract's per-line confidence is copied onto each item; lines below 70 are flagged.
-6. **Validate & convert**: Zod schema → integer minor units → `Item[]` (`source: 'scan'`), plus tax, service charge, discount, and printed total. Confirming the review writes tax and gratuity into the bill's adjustments, so they're **already filled in on the Tax & tip step** (Step 4).
+6. **Validate & convert**: Zod schema → integer minor units → `Item[]` (`source: 'scan'`), plus tax, service charge, and discount. Confirming the review writes tax and gratuity into the bill's adjustments, so they're **already filled in on the Tax & tip step** (Step 4).
 7. **Review screen** (always shown, never auto-committed):
    - Receipt thumbnail (tap to zoom) above or beside the editable item list.
    - Low-confidence rows highlighted in amber; one-tap delete for junk rows; inline edit for name and price.
@@ -583,7 +582,9 @@ On the Summary, if a payer is set, each non-payer card shows **Pay {payer}** but
 On People or Summary: a 🎂 toggle per person. Their share is spread across everyone else (8.1 step 6). Their card shows "🎂 On us!" and each covering card shows "+$X for Sam's treat".
 
 ### 10.6 Penny-perfect badge
-The Summary footer reads "✓ Adds up to $187.43 exactly" when `reconciles` is true. If a printed total exists and differs, it shows an amber note instead: "Receipt says $188.00 — $0.57 difference" with **Fix** (jumps to receipt totals).
+The Summary footer reads "✓ Adds up to $187.43 exactly" when `reconciles` is true (everyone's shares sum to the bill total).
+
+There is deliberately **no receipt-vs-bill comparison on the Summary**. Checking items against the receipt happens on the scan review screen (9.1 step 7), where the receipt's own subtotal, tax, gratuity, and total are all known. By the Summary, the user may have added tax, gratuity, or tip that isn't printed on the receipt, so comparing against the printed total produced false alarms (see the decision log).
 
 ### 10.7 Remaining meter
 A progress bar at the top of Assign: "$142.00 of $154.00 assigned". It turns green with a ✓ at 100%.
@@ -789,6 +790,7 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | Removed the Summary's "Receipt says $X — difference · Fix" warning and the manual "Printed total" field that fed it. | User report: a receipt with no printed tax showed "Receipt says $27.35 before tip — $4.10 difference" after the user correctly added $4.10 tax. The comparison can't tell user-added tax/gratuity from a missing item; item reconciliation stays on the scan review screen. |
 | 2026-10-09 | Step validation (D22): Next and later step dots are disabled until the current step has the minimum data for final totals. One person is enough (a bill for one is still calculable). | User report: it was possible to reach later steps with no items. |
 | 2026-10-09 | New bills start at 0% tip (D21). | User report: a $5 item shared by 3 via pass-the-phone showed a $6.00 total — the split was right, but the 20% default tip had been applied silently before the Tax & tip step. |
 | 2026-10-09 | Canvas resizing in `preprocess.ts` uses `imageSmoothingQuality = 'high'`; a failure to load the OCR engine shows its own message ("Couldn't load the receipt reader…") instead of the generic error. | User report: a receipt that scanned before stopped working. The default ("low") resampling made OCR read the total "27.35" as "21.35", so the review flagged a $6.00 mismatch (verified at 1000–2400 px; "high" reads it correctly). A stopped dev server also makes the first scan fail, which previously looked like a generic bug. |

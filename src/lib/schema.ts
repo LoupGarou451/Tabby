@@ -43,7 +43,6 @@ export const billSchema = z.object({
     serviceCharge: money.nonnegative(),
     discount: money.nonnegative(),
   }),
-  printedTotal: money.nonnegative().optional(),
   payerId: z.string().optional(),
   treatedIds: z.array(z.string()),
   paid: z.record(z.string(), z.boolean()),

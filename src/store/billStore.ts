@@ -40,7 +40,6 @@ interface BillActions {
   assignToEveryone: (itemId: string) => void
   splitRemainingEvenly: () => void
   setAdjustments: (patch: Partial<Adjustments>) => void
-  setPrintedTotal: (value: number | undefined) => void
   setPayer: (personId: string | undefined) => void
   toggleTreat: (personId: string) => void
   togglePaid: (personId: string) => void
@@ -131,7 +130,6 @@ export const useBill = create<BillState & BillActions>()(
             if (a.tip.mode === 'amount') a.tip.value = rescale(a.tip.value)
             a.serviceCharge = rescale(a.serviceCharge)
             a.discount = rescale(a.discount)
-            if (b.printedTotal !== undefined) b.printedTotal = rescale(b.printedTotal)
           })
           if (rounded) {
             const unit =
@@ -231,7 +229,6 @@ export const useBill = create<BillState & BillActions>()(
           }, 'Split remaining items evenly'),
 
         setAdjustments: (patch) => change((b) => void Object.assign(b.adjustments, patch)),
-        setPrintedTotal: (value) => change((b) => void (b.printedTotal = value)),
         setPayer: (personId) =>
           change((b) => {
             b.payerId = personId
