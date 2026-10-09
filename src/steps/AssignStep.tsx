@@ -5,6 +5,7 @@ import { allocate, formatMoney } from '../lib/money'
 import type { Item, Person } from '../lib/types'
 import { isAssigned, useBill } from '../store/billStore'
 import { useUi } from '../store/uiStore'
+import { PassThePhone } from '../features/PassThePhone'
 
 export function AssignStep() {
   const items = useBill((s) => s.bill.items)
@@ -13,6 +14,7 @@ export function AssignStep() {
   const setStep = useUi((s) => s.setStep)
   const [view, setView] = useState<'item' | 'person'>('item')
   const [sharesFor, setSharesFor] = useState<string | null>(null)
+  const [passing, setPassing] = useState(false)
 
   if (!items.length)
     return (
@@ -52,6 +54,11 @@ export function AssignStep() {
             { value: 'person', label: 'By person' },
           ]}
         />
+        {people.length > 1 && (
+          <Button onClick={() => setPassing(true)}>
+            👋 Pass the phone — everyone taps their own
+          </Button>
+        )}
         {anyUnassigned && people.length > 1 && (
           <Button onClick={splitRemainingEvenly}>➗ Split remaining items evenly</Button>
         )}
@@ -71,6 +78,15 @@ export function AssignStep() {
       )}
 
       <SharesSheet itemId={sharesFor} onClose={() => setSharesFor(null)} />
+      {passing && (
+        <PassThePhone
+          onExit={() => setPassing(false)}
+          onDone={() => {
+            setPassing(false)
+            setStep('summary')
+          }}
+        />
+      )}
     </div>
   )
 }

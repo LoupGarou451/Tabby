@@ -186,6 +186,8 @@ export function MenuSheet() {
           setStep('receipt')
           close()
         })}
+        {item('🗂️', 'Bill history', () => openSheet('history'))}
+        {item('⚙️', 'Settings', () => openSheet('settings'))}
         {item('ℹ️', 'About Tabby', () => openSheet('about'))}
       </div>
     </Sheet>

@@ -22,6 +22,7 @@ function ChooseInput() {
   const setPrefs = usePrefs((s) => s.set)
   const setEditing = useUi((s) => s.setEditingItems)
   const loadSample = useBill((s) => s.loadSample)
+  const startQuickSplit = useBill((s) => s.startQuickSplit)
   const startScan = useUi((s) => s.startScan)
   const currency = useBill((s) => s.bill.currency)
   const setCurrency = useBill((s) => s.setCurrency)
@@ -73,6 +74,19 @@ function ChooseInput() {
       <div className="grid grid-cols-2 gap-3">
         {lastMethod === 'scan' ? [scan, manual] : [manual, scan]}
       </div>
+      <button
+        type="button"
+        onClick={startQuickSplit}
+        className="flex min-h-14 items-center gap-3 rounded-2xl border border-dashed border-line px-4 text-left transition hover:border-brand"
+      >
+        <span className="text-2xl" aria-hidden="true">
+          ➗
+        </span>
+        <span>
+          <span className="font-semibold">Just split it evenly</span>
+          <span className="block text-sm text-muted">Total, people, tip. Done.</span>
+        </span>
+      </button>
       <button
         type="button"
         onClick={loadSample}
