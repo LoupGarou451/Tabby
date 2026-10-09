@@ -22,8 +22,7 @@ export function HistorySheet() {
         <ul className="flex flex-col divide-y divide-line">
           {history.map((b) => {
             const total = computeSplit(b, 'even').billTotal
-            const people =
-              b.mode === 'quick' && !b.people.length ? b.quick?.headcount : b.people.length
+            const people = b.people.length
             const date = new Date(b.updatedAt).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
@@ -34,7 +33,7 @@ export function HistorySheet() {
                   type="button"
                   onClick={() => {
                     openFromHistory(b.id)
-                    setStep(b.mode === 'quick' ? 'receipt' : 'summary')
+                    setStep('summary')
                     openSheet(null)
                   }}
                   className="flex min-h-14 min-w-0 flex-1 flex-col items-start justify-center rounded-xl px-2 text-left hover:bg-surface-2"

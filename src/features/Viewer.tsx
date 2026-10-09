@@ -31,8 +31,8 @@ export function Viewer({ hash, onExit }: { hash: string; onExit: () => void }) {
       </Shell>
     )
 
-  const { bill, mode, handles } = payload
-  const split = computeSplit(bill, mode)
+  const { bill, handles } = payload
+  const split = computeSplit(bill)
   const payer = bill.people.find((p) => p.id === bill.payerId)
   const fmt = (m: number) => formatMoney(m, bill.currency)
   const mine = split.people.find((p) => p.personId === me)
@@ -44,7 +44,7 @@ export function Viewer({ hash, onExit }: { hash: string; onExit: () => void }) {
         <h1 className="text-2xl font-bold">{bill.title}</h1>
         <p className="text-muted">
           {fmt(split.billTotal)} total · {split.people.length} people ·{' '}
-          {mode === 'fair' ? 'split by what you had' : 'split evenly'}
+          {bill.splitMode === 'fair' ? 'split by what you had' : 'split evenly'}
         </p>
       </div>
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createBill, makeItem, makePerson } from '../src/lib/bill'
 import { computeSplit, type SplitResult } from '../src/lib/split'
 import type { Bill } from '../src/lib/types'
-import { SAMPLE_TAX, sampleItems } from '../src/sample/sampleBill'
+import { SAMPLE_TAX, sampleItems } from './fixtures/sampleBill'
 
 function sum(r: SplitResult) {
   return r.people.reduce((s, p) => s + p.total, 0) + r.unassigned.total
@@ -144,6 +144,13 @@ describe('computeSplit — treat', () => {
 })
 
 describe('computeSplit — even', () => {
+  it("uses the bill's own split mode by default", () => {
+    const bill = dinner()
+    bill.splitMode = 'even'
+    expect(computeSplit(bill).mode).toBe('even')
+    expect(computeSplit(bill)).toEqual(computeSplit(bill, 'even'))
+  })
+
   it('splits the bill total equally, differing by at most one cent', () => {
     const r = computeSplit(dinner(), 'even')
     const totals = r.people.map((p) => p.total)
@@ -184,39 +191,6 @@ describe('computeSplit — round up', () => {
     const r = computeSplit(bill)
     expect(r.tip).toBe(plain.tip + r.roundUpTotal)
     expect(r.billTotal).toBe(plain.billTotal + r.roundUpTotal)
-  })
-})
-
-describe('computeSplit — quick split', () => {
-  function quick(headcount: number): Bill {
-    const bill = createBill()
-    bill.mode = 'quick'
-    bill.quick = { total: 17692, tax: 1442, headcount }
-    return bill
-  }
-
-  it('matches the design doc example: $209.42 across 4', () => {
-    const r = computeSplit(quick(4))
-    expect(r.billTotal).toBe(20942)
-    expect(r.people.map((p) => p.total)).toEqual([5236, 5236, 5235, 5235])
-    expect(r.people[0].label).toBe('Person 1')
-    expectInvariants(r)
-  })
-
-  it('tips on the full total when tax is unknown', () => {
-    const bill = quick(3)
-    bill.quick!.tax = 0
-    const r = computeSplit(bill)
-    expect(r.tip).toBe(Math.round(17692 * 0.2))
-    expectInvariants(r)
-  })
-
-  it('uses named people when present', () => {
-    const bill = quick(2)
-    bill.people = ['Ana', 'Ben', 'Cy'].map(makePerson)
-    const r = computeSplit(bill)
-    expect(r.people.map((p) => p.label)).toEqual(['Ana', 'Ben', 'Cy'])
-    expectInvariants(r)
   })
 })
 

@@ -27,19 +27,12 @@ export function ScanFlow() {
 function Flow({ request }: { request: ScanRequest }) {
   const endScan = useUi((s) => s.endScan)
   const setEditing = useUi((s) => s.setEditingItems)
-  const setQuick = useBill((s) => s.setQuick)
   const currency = useBill((s) => s.bill.currency)
-  const [phase, setPhase] = useState<Phase>(() =>
-    request.source instanceof HTMLCanvasElement
-      ? { name: 'crop', image: request.source }
-      : { name: 'loading' },
-  )
+  const [phase, setPhase] = useState<Phase>({ name: 'loading' })
   const cancelled = useRef(false)
 
   useEffect(() => {
-    const src = request.source
-    if (src instanceof HTMLCanvasElement) return
-    loadImage(src).then(
+    loadImage(request.source).then(
       (image) => setPhase({ name: 'crop', image }),
       (e: Error) => setPhase({ name: 'error', message: e.message }),
     )
@@ -70,15 +63,6 @@ function Flow({ request }: { request: ScanRequest }) {
       if (cancelled.current) return
       const draft = validateDraft(parseReceipt(lines, currency))
 
-      if (request.purpose === 'total') {
-        if (!draft.total) {
-          setPhase({ name: 'error', message: "We couldn't find a total on this receipt" })
-          return
-        }
-        setQuick({ total: draft.total, tax: draft.tax ?? 0 })
-        endScan()
-        return
-      }
       setPhase(
         draft.items.length
           ? { name: 'review', draft, thumbnail }
@@ -153,22 +137,19 @@ function Flow({ request }: { request: ScanRequest }) {
           <p className="font-semibold">{phase.message}</p>
           <p className="max-w-xs text-sm text-muted">
             Try a flatter, brighter photo and crop close to the receipt.
-            {request.purpose === 'total' && ' You can also type the total in.'}
           </p>
           <div className="flex gap-2">
             <Button variant="primary" onClick={endScan}>
               Try another photo
             </Button>
-            {request.purpose === 'items' && (
-              <Button
-                onClick={() => {
-                  setEditing(true)
-                  endScan()
-                }}
-              >
-                Enter manually instead
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                setEditing(true)
+                endScan()
+              }}
+            >
+              Enter manually instead
+            </Button>
           </div>
         </Centered>
       )}

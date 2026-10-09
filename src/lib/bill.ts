@@ -10,11 +10,9 @@ export const newId = (): string =>
     b.toString(16).padStart(2, '0'),
   ).join('')
 
-/** "Friday dinner": breakfast before 11:00, lunch before 16:00, dinner otherwise. */
+/** Neutral default name, e.g. "Bill · Oct 9" — no guessing about the meal. */
 export function defaultTitle(date = new Date()): string {
-  const day = date.toLocaleDateString('en-US', { weekday: 'long' })
-  const h = date.getHours()
-  return `${day} ${h < 11 ? 'breakfast' : h < 16 ? 'lunch' : 'dinner'}`
+  return `Bill · ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
 }
 
 export function createBill(opts: { currency?: string; tipBps?: number; now?: Date } = {}): Bill {
@@ -22,7 +20,7 @@ export function createBill(opts: { currency?: string; tipBps?: number; now?: Dat
   return {
     schemaVersion: 1,
     id: newId(),
-    mode: 'itemized',
+    splitMode: 'fair',
     title: defaultTitle(opts.now),
     createdAt: now,
     updatedAt: now,

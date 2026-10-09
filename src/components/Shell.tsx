@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Logo } from '../brand/Logo'
 import { formatMoney } from '../lib/money'
 import { useBill, isAssigned } from '../store/billStore'
@@ -15,34 +15,37 @@ const STEP_LABELS: Record<Step, string> = {
   summary: 'Summary',
 }
 
-export function Header() {
-  const title = useBill((s) => s.bill.title)
-  const currency = useBill((s) => s.bill.currency)
-  const setTitle = useBill((s) => s.setTitle)
+/** Takes the user home (Step 1). Asks first if that would set aside a bill in progress. */
+function useGoHome() {
+  const hasContent = useBill((s) => s.bill.items.length > 0 || s.bill.people.length > 0)
   const openSheet = useUi((s) => s.openSheet)
-  const [text, setText] = useState(title)
-  const [focused, setFocused] = useState(false)
-  if (!focused && text !== title) setText(title)
+  const setStep = useUi((s) => s.setStep)
+  const setEditing = useUi((s) => s.setEditingItems)
+  return () => {
+    if (hasContent) return openSheet('startOver')
+    setEditing(false)
+    setStep('receipt')
+    openSheet(null)
+  }
+}
+
+export function Header() {
+  const currency = useBill((s) => s.bill.currency)
+  const openSheet = useUi((s) => s.openSheet)
+  const goHome = useGoHome()
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-bg/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[480px] items-center gap-2 px-3">
-        <Logo size={30} />
-        <input
-          aria-label="Bill title"
-          value={text}
-          onFocus={(e) => {
-            setFocused(true)
-            e.currentTarget.select()
-          }}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => {
-            setFocused(false)
-            setTitle(text.trim() || title)
-          }}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          className="min-h-10 min-w-0 flex-1 truncate rounded-lg bg-transparent px-2 font-semibold outline-none focus:bg-surface-2"
-        />
+        <button
+          type="button"
+          onClick={goHome}
+          aria-label="Tabby — start over"
+          className="-ml-1 flex min-h-11 flex-1 items-center gap-2 rounded-lg px-1"
+        >
+          <Logo size={30} />
+          <span className="font-rounded text-xl font-extrabold text-brand">Tabby</span>
+        </button>
         <button
           type="button"
           onClick={() => openSheet('currency')}
@@ -64,6 +67,44 @@ export function Header() {
   )
 }
 
+/** "Start over?" confirmation used by the header and the menu's New bill. */
+export function StartOverSheet() {
+  const open = useUi((s) => s.sheet === 'startOver')
+  const openSheet = useUi((s) => s.openSheet)
+  const setStep = useUi((s) => s.setStep)
+  const setEditing = useUi((s) => s.setEditingItems)
+  const newBill = useBill((s) => s.newBill)
+  const hasItems = useBill((s) => s.bill.items.length > 0)
+  const close = () => openSheet(null)
+
+  return (
+    <Sheet open={open} onClose={close} title="Start over?">
+      <div className="flex flex-col gap-4">
+        <p className="text-muted">
+          {hasItems
+            ? 'Your current receipt will be saved to Bill history, so you can come back to it.'
+            : "The people you've added will be cleared."}
+        </p>
+        <div className="flex flex-col gap-2">
+          <Button
+            variant="primary"
+            className="min-h-12"
+            onClick={() => {
+              newBill()
+              setEditing(false)
+              setStep('receipt')
+              close()
+            }}
+          >
+            Start over
+          </Button>
+          <Button onClick={close}>Keep editing</Button>
+        </div>
+      </div>
+    </Sheet>
+  )
+}
+
 export function BottomBar() {
   const step = useUi((s) => s.step)
   const setStep = useUi((s) => s.setStep)
@@ -82,6 +123,7 @@ export function BottomBar() {
       case 'people':
         return `${bill.people.length} ${bill.people.length === 1 ? 'person' : 'people'}`
       case 'assign':
+        if (bill.splitMode === 'even') return 'Splitting evenly'
         return bill.items.length && !unassigned.length ? (
           <span className="text-good">✓ All assigned</span>
         ) : (
@@ -165,9 +207,7 @@ export function Snackbar() {
 export function MenuSheet() {
   const sheet = useUi((s) => s.sheet)
   const openSheet = useUi((s) => s.openSheet)
-  const setStep = useUi((s) => s.setStep)
-  const setEditing = useUi((s) => s.setEditingItems)
-  const newBill = useBill((s) => s.newBill)
+  const goHome = useGoHome()
   const close = () => openSheet(null)
 
   const item = (icon: string, label: string, onClick: () => void) => (
@@ -184,12 +224,7 @@ export function MenuSheet() {
   return (
     <Sheet open={sheet === 'menu'} onClose={close} title="Menu">
       <div className="flex flex-col gap-1">
-        {item('🧾', 'New bill', () => {
-          newBill()
-          setEditing(false)
-          setStep('receipt')
-          close()
-        })}
+        {item('🧾', 'New bill', goHome)}
         {item('🗂️', 'Bill history', () => openSheet('history'))}
         {item('⚙️', 'Settings', () => openSheet('settings'))}
         {item('ℹ️', 'About Tabby', () => openSheet('about'))}

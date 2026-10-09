@@ -8,8 +8,6 @@ import { usePrefs } from '../store/prefsStore'
 export function PeopleStep() {
   const people = useBill((s) => s.bill.people)
   const addPerson = useBill((s) => s.addPerson)
-  const addSamplePeople = useBill((s) => s.addSamplePeople)
-  const usesSample = useBill((s) => s.bill.items.some((i) => i.source === 'sample'))
   const recentNames = usePrefs((s) => s.recentNames)
   const rememberNames = usePrefs((s) => s.rememberNames)
   const [name, setName] = useState('')
@@ -55,9 +53,6 @@ export function PeopleStep() {
 
       <div className="flex flex-wrap gap-2">
         <QuickChip onClick={() => addPerson(`Guest ${guestNumber}`)}>+ Guest</QuickChip>
-        {usesSample && people.length === 0 && (
-          <QuickChip onClick={addSamplePeople}>+ Add sample people</QuickChip>
-        )}
         {suggestions.map((n) => (
           <QuickChip key={n} onClick={() => add(n)}>
             + {n}

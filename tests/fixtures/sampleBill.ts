@@ -1,6 +1,6 @@
-import { makeItem } from '../lib/bill'
+import { makeItem } from '../../src/lib/bill'
 
-/** The sample receipt (TABBY_DESIGN.md section 11). Prices in cents, USD. */
+/** The sample receipt used by tests (TABBY_DESIGN.md section 11). Prices in cents, USD. */
 export const SAMPLE_ITEMS: [name: string, qty: number, price: number][] = [
   ['Truffle Fries', 1, 1200],
   ['Burrata', 1, 1650],
@@ -15,4 +15,4 @@ export const SAMPLE_TAX = 1442
 export const SAMPLE_TOTAL = 17692
 export const SAMPLE_PEOPLE = ['Alex', 'Sam', 'Priya', 'Jordan']
 
-export const sampleItems = () => SAMPLE_ITEMS.map(([n, q, p]) => makeItem(n, p, q, 'sample'))
+export const sampleItems = () => SAMPLE_ITEMS.map(([n, q, p]) => makeItem(n, p, q))

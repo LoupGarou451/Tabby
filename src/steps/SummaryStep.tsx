@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { copyText } from '../lib/clipboard'
-import { Avatar, Button, Card, EmptyState, Segmented, Switch } from '../components/ui'
+import { Avatar, Button, Card, EmptyState, Switch } from '../components/ui'
 import { Hint } from '../components/Hint'
 import { cx } from '../lib/cx'
 import { formatMoney } from '../lib/money'
@@ -16,13 +16,17 @@ export function SummaryStep() {
   const bill = useBill((s) => s.bill)
   const splitRemainingEvenly = useBill((s) => s.splitRemainingEvenly)
   const setRoundUp = useBill((s) => s.setRoundUp)
+  const setTitle = useBill((s) => s.setTitle)
+  const newBill = useBill((s) => s.newBill)
   const setStep = useUi((s) => s.setStep)
-  const mode = useUi((s) => s.splitMode)
-  const setMode = useUi((s) => s.setSplitMode)
+  const setEditing = useUi((s) => s.setEditingItems)
   const openSheet = useUi((s) => s.openSheet)
+  const mode = bill.splitMode
   const handles = usePrefs((s) => s.payHandles)
   const split = useSplit()
-  const other = computeSplit(bill, mode === 'fair' ? 'even' : 'fair')
+  // In Even mode, compare with a by-item split — but only once every item is assigned.
+  const byItem = computeSplit(bill, 'fair')
+  const compare = mode === 'even' && byItem.unassigned.total === 0 ? byItem : null
   const [editHandles, setEditHandles] = useState(false)
   const fmt = (m: number) => formatMoney(m, bill.currency)
 
@@ -53,25 +57,18 @@ export function SummaryStep() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-2xl font-bold">Who owes what</h2>
-        <p className="text-muted">{bill.title}</p>
-      </div>
-
       <div className="flex flex-col gap-1">
-        <Segmented
-          label="Split"
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: 'fair', label: 'Fair' },
-            { value: 'even', label: 'Even' },
-          ]}
-        />
-        <p className="text-center text-xs text-muted">
-          {mode === 'fair'
-            ? 'Fair = you pay for what you had, plus your share of tax & tip.'
-            : 'Even = everyone pays the same, whatever they ordered.'}
+        <h2 className="text-2xl font-bold">Who owes what</h2>
+        <TitleInput title={bill.title} onSave={setTitle} />
+        <p className="text-sm text-muted">
+          {mode === 'fair' ? 'Split by what each person had' : 'Split evenly'} ·{' '}
+          <button
+            type="button"
+            onClick={() => setStep('assign')}
+            className="font-medium text-brand-strong underline-offset-2 hover:underline"
+          >
+            Change
+          </button>
         </p>
       </div>
 
@@ -94,7 +91,7 @@ export function SummaryStep() {
         <PersonCard
           key={p.personId}
           split={p}
-          compareTo={other.people.find((o) => o.personId === p.personId)?.total}
+          compareTo={compare?.people.find((o) => o.personId === p.personId)?.total}
           soFar={hasUnassigned}
         />
       ))}
@@ -151,6 +148,17 @@ export function SummaryStep() {
           🔗 Share link &amp; QR code
         </Button>
         <ShareSummaryButton />
+        <Button
+          variant="secondary"
+          className="mt-2 min-h-12 border-good text-base font-semibold text-good"
+          onClick={() => {
+            newBill('Saved to history')
+            setEditing(false)
+            setStep('receipt')
+          }}
+        >
+          ✓ Done — save to history
+        </Button>
       </div>
     </div>
   )
@@ -168,7 +176,7 @@ function PersonCard({
   const bill = useBill((s) => s.bill)
   const togglePaid = useBill((s) => s.togglePaid)
   const toggleTreat = useBill((s) => s.toggleTreat)
-  const mode = useUi((s) => s.splitMode)
+  const mode = bill.splitMode
   const handles = usePrefs((s) => s.payHandles)
   const [open, setOpen] = useState(false)
   const person = bill.people.find((x) => x.id === p.personId)
@@ -180,8 +188,8 @@ function PersonCard({
   const treated = bill.treatedIds.includes(p.personId)
   // Someone else must be left to cover a treat.
   const canTreat = treated || bill.people.length - bill.treatedIds.length > 1
-  // In Even mode, show how this compares with the fair split (+ pays more, − saves).
-  const delta = mode === 'even' && compareTo !== undefined ? p.total - compareTo : 0
+  // In Even mode, show how this compares with a by-item split (+ pays more, − saves).
+  const delta = compareTo !== undefined ? p.total - compareTo : 0
 
   const line = (label: string, value: number, negative = false) =>
     value !== 0 && (
@@ -227,7 +235,7 @@ function PersonCard({
           {delta !== 0 && (
             <div className={cx('text-xs font-medium', delta > 0 ? 'text-bad' : 'text-good')}>
               {delta > 0 ? '+' : '−'}
-              {fmt(Math.abs(delta))} vs fair
+              {fmt(Math.abs(delta))} vs by item
             </div>
           )}
         </div>
@@ -255,7 +263,7 @@ function PersonCard({
           {line('Tax', p.tax)}
           {line('Tip', p.tip - p.roundUpExtra)}
           {line('Rounded up → tip', p.roundUpExtra)}
-          {line('Service charge', p.service)}
+          {line('Gratuity', p.service)}
           {p.treatAdjustment > 0 && line('🎂 Covering a treat', p.treatAdjustment)}
           {mode === 'even' && <p className="text-sm text-muted">An equal share of the bill.</p>}
         </div>
@@ -323,4 +331,28 @@ function ShareSummaryButton() {
   }
 
   return <Button onClick={share}>{copied ? '✓ Copied to clipboard' : '📋 Share as text'}</Button>
+}
+
+/** Bill name, editable in place (it names the bill in history, share links, and payment notes). */
+function TitleInput({ title, onSave }: { title: string; onSave: (t: string) => void }) {
+  const [text, setText] = useState(title)
+  const [focused, setFocused] = useState(false)
+  if (!focused && text !== title) setText(title)
+  return (
+    <input
+      aria-label="Bill name"
+      value={text}
+      onFocus={(e) => {
+        setFocused(true)
+        e.currentTarget.select()
+      }}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        setFocused(false)
+        onSave(text.trim() || title)
+      }}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      className="-ml-2 min-h-10 rounded-lg bg-transparent px-2 text-lg text-muted outline-none hover:bg-surface-2 focus:bg-surface-2 focus:text-ink"
+    />
+  )
 }

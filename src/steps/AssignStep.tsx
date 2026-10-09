@@ -12,6 +12,8 @@ export function AssignStep() {
   const items = useBill((s) => s.bill.items)
   const people = useBill((s) => s.bill.people)
   const splitRemainingEvenly = useBill((s) => s.splitRemainingEvenly)
+  const splitMode = useBill((s) => s.bill.splitMode)
+  const setSplitMode = useBill((s) => s.setSplitMode)
   const setStep = useUi((s) => s.setStep)
   const [view, setView] = useState<'item' | 'person'>('item')
   const [sharesFor, setSharesFor] = useState<string | null>(null)
@@ -36,47 +38,78 @@ export function AssignStep() {
 
   const anyUnassigned = items.some((i) => !isAssigned(i, people))
 
+  const even = splitMode === 'even'
+
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-2xl font-bold">Who had what?</h2>
-        <p className="text-muted">Tap people to assign. Tap more than one to share an item.</p>
+        <h2 className="text-2xl font-bold">How should we split it?</h2>
+        <p className="text-muted">You can change this any time.</p>
       </div>
 
-      <RemainingMeter />
+      <Segmented
+        label="How to split"
+        value={splitMode}
+        onChange={setSplitMode}
+        options={[
+          { value: 'fair', label: 'By what each person had' },
+          { value: 'even', label: 'Evenly' },
+        ]}
+      />
 
-      <div className="flex flex-col gap-2">
-        <Segmented
-          label="Assign by"
-          value={view}
-          onChange={setView}
-          options={[
-            { value: 'item', label: 'By item' },
-            { value: 'person', label: 'By person' },
-          ]}
-        />
-        {people.length > 1 && (
-          <Button onClick={() => setPassing(true)}>
-            👋 Pass the phone — everyone taps their own
-          </Button>
-        )}
-        {anyUnassigned && people.length > 1 && (
-          <Button onClick={splitRemainingEvenly}>➗ Split remaining items evenly</Button>
-        )}
-      </div>
-
-      {view === 'item' && <Hint id="tap-chips" />}
-      {view === 'item' ? (
-        items.map((item) => (
-          <ItemCard
-            key={item.id}
-            item={item}
-            people={people}
-            onCustomize={() => setSharesFor(item.id)}
-          />
-        ))
+      {even ? (
+        <Card className="flex flex-col items-center gap-2 py-8 text-center">
+          <div className="text-4xl" aria-hidden="true">
+            ➗
+          </div>
+          <p className="font-semibold">Everyone pays the same share</p>
+          <p className="text-sm text-muted">
+            The whole bill — tax and tip included — is split equally between {people.length}{' '}
+            {people.length === 1 ? 'person' : 'people'}. No need to assign items.
+          </p>
+        </Card>
       ) : (
-        <ByPerson items={items} people={people} />
+        <>
+          <p className="-mt-2 text-sm text-muted">
+            Tap people to assign. Tap more than one to share an item.
+          </p>
+
+          <RemainingMeter />
+
+          <div className="flex flex-col gap-2">
+            <Segmented
+              label="Assign by"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: 'item', label: 'By item' },
+                { value: 'person', label: 'By person' },
+              ]}
+            />
+            {people.length > 1 && (
+              <Button onClick={() => setPassing(true)}>
+                👋 Pass the phone — everyone taps their own
+              </Button>
+            )}
+            {anyUnassigned && people.length > 1 && (
+              <Button onClick={splitRemainingEvenly}>➗ Split remaining items evenly</Button>
+            )}
+          </div>
+
+          {view === 'item' && <Hint id="tap-chips" />}
+          {view === 'item' ? (
+            items.map((item) => (
+              <ItemCard
+                key={item.id}
+                item={item}
+                people={people}
+                onCustomize={() => setSharesFor(item.id)}
+              />
+            ))
+          ) : (
+            <ByPerson items={items} people={people} />
+          )}
+        </>
       )}
 
       <SharesSheet itemId={sharesFor} onClose={() => setSharesFor(null)} />

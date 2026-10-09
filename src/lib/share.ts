@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { formatPlain, type Money } from './money'
 import { newId } from './bill'
 import { billSchema } from './schema'
-import type { SplitMode } from './split'
 import type { Bill } from './types'
 
 /** Public deployment (GitHub Pages). Bills travel in the #hash, which is never sent to it. */
@@ -17,7 +16,6 @@ export interface PayHandles {
 export interface SharePayload {
   v: 1
   bill: Bill
-  mode: SplitMode
   handles: PayHandles
 }
 
@@ -54,7 +52,6 @@ const wireSchema = z.object({
   y: z.number().int().optional(), // payer index
   x: z.array(z.number().int()).optional(), // treated indexes
   o: z.number().int().optional(), // printed total
-  q: z.tuple([z.number().int(), z.number().int(), z.number().int().min(1)]).optional(), // quick split
   h: z.tuple([z.string(), z.string()]).optional(), // [venmo, cashtag]
 })
 type Wire = z.infer<typeof wireSchema>
@@ -64,14 +61,14 @@ const toWireAmount = (a: Bill['adjustments']['tax']): [0 | 1, number] =>
 const fromWireAmount = ([kind, n]: [0 | 1, number]): Bill['adjustments']['tax'] =>
   kind === 0 ? { mode: 'amount', value: n } : { mode: 'percent', bps: n }
 
-export function encodeShare(bill: Bill, mode: SplitMode, handles: PayHandles): string {
+export function encodeShare(bill: Bill, handles: PayHandles): string {
   const index = new Map(bill.people.map((p, k) => [p.id, k]))
   const adj = bill.adjustments
   const wire: Wire = {
     v: 1,
     t: bill.title,
     c: bill.currency,
-    m: mode,
+    m: bill.splitMode,
     p: bill.people.map((p) => [p.name, p.colorIndex]),
     i: bill.items.map((i) => [
       i.name,
@@ -86,8 +83,6 @@ export function encodeShare(bill: Bill, mode: SplitMode, handles: PayHandles): s
   const treated = bill.treatedIds.filter((id) => index.has(id)).map((id) => index.get(id)!)
   if (treated.length) wire.x = treated
   if (bill.printedTotal !== undefined) wire.o = bill.printedTotal
-  if (bill.mode === 'quick' && bill.quick)
-    wire.q = [bill.quick.total, bill.quick.tax, bill.quick.headcount]
   if (handles.venmo || handles.cashtag) wire.h = [handles.venmo ?? '', handles.cashtag ?? '']
   // "Paid" checkmarks are the organizer's private bookkeeping, so they're never shared.
   return compressToEncodedURIComponent(JSON.stringify(wire))
@@ -99,12 +94,11 @@ function fromWire(w: Wire): SharePayload | null {
   const bill: Bill = {
     schemaVersion: 1,
     id: newId(),
-    mode: w.q ? 'quick' : 'itemized',
+    splitMode: w.m,
     title: w.t,
     createdAt: now,
     updatedAt: now,
     currency: w.c,
-    quick: w.q ? { total: w.q[0], tax: w.q[1], headcount: w.q[2] } : undefined,
     roundUp: w.r === 1,
     people,
     items: w.i.map(([name, price, quantity, weights]) => ({
@@ -132,7 +126,7 @@ function fromWire(w: Wire): SharePayload | null {
   const valid = billSchema.safeParse(bill)
   if (!valid.success) return null
   const handles = w.h ? { venmo: w.h[0] || undefined, cashtag: w.h[1] || undefined } : {}
-  return { v: 1, bill: valid.data, mode: w.m, handles }
+  return { v: 1, bill: valid.data, handles }
 }
 
 /** Returns the payload in a `#b=…` hash, or null if it's missing, corrupt, or from another version. */

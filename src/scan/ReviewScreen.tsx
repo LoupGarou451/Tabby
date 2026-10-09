@@ -72,7 +72,7 @@ export function ReviewScreen({
     ['Subtotal', draft.subtotal],
     ['Discount', draft.discount],
     ['Tax', draft.tax],
-    ['Service charge', draft.serviceCharge],
+    ['Gratuity / service charge', draft.serviceCharge],
     ['Tip', draft.tip],
     ['Total', draft.total],
   ]
@@ -169,7 +169,10 @@ export function ReviewScreen({
 
       {totals.some(([, v]) => v !== undefined) && (
         <Card className="flex flex-col gap-1 text-sm">
-          <h3 className="mb-1 font-semibold">Also found</h3>
+          <h3 className="font-semibold">From the bottom of the receipt</h3>
+          <p className="mb-1 text-xs text-muted">
+            These fill in the Tax &amp; tip step and are used to check the math above.
+          </p>
           {totals.map(
             ([label, v]) =>
               v !== undefined && (

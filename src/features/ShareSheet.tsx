@@ -13,7 +13,6 @@ const QR_MAX_CHARS = 2000
 export function ShareSheet() {
   const open = useUi((s) => s.sheet === 'share')
   const openSheet = useUi((s) => s.openSheet)
-  const splitMode = useUi((s) => s.splitMode)
   const bill = useBill((s) => s.bill)
   const handles = usePrefs((s) => s.payHandles)
   const target = usePrefs((s) => s.shareTarget)
@@ -23,8 +22,8 @@ export function ShareSheet() {
 
   const base = shareBase(target)
   const url = useMemo(
-    () => (open ? shareUrl(base.url, encodeShare(bill, splitMode, handles)) : ''),
-    [open, base.url, bill, splitMode, handles],
+    () => (open ? shareUrl(base.url, encodeShare(bill, handles)) : ''),
+    [open, base.url, bill, handles],
   )
   const tooBig = url.length > QR_MAX_CHARS
 

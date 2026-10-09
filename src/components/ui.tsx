@@ -221,7 +221,12 @@ export function Sheet({
   children: ReactNode
 }) {
   const ref = useRef<HTMLDialogElement>(null)
+  // Mirrors `open` so the dialog's close event can tell a user close (Esc, backdrop, ✕)
+  // from the app closing it — e.g. switching from the menu to History must not report a
+  // close, or the new sheet would be dismissed immediately.
+  const openRef = useRef(open)
   useEffect(() => {
+    openRef.current = open
     const d = ref.current
     if (!d) return
     if (open && !d.open) {
@@ -234,7 +239,7 @@ export function Sheet({
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      onClose={() => openRef.current && onClose()}
       onClick={(e) => e.target === ref.current && onClose()}
       aria-label={title}
       className="m-0 mt-auto w-full max-w-none bg-transparent p-0 outline-none backdrop:bg-black/40 sm:m-auto sm:max-w-[480px]"

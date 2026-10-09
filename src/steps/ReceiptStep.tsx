@@ -7,7 +7,6 @@ import type { Item } from '../lib/types'
 import { useBill } from '../store/billStore'
 import { usePrefs } from '../store/prefsStore'
 import { useUi } from '../store/uiStore'
-import { renderSampleReceipt } from '../sample/renderReceipt'
 import { CaptureButtons } from '../scan/CaptureButtons'
 import { useDropToScan, usePasteToScan } from '../scan/scanHooks'
 
@@ -22,11 +21,6 @@ function ChooseInput() {
   const lastMethod = usePrefs((s) => s.lastInputMethod)
   const setPrefs = usePrefs((s) => s.set)
   const setEditing = useUi((s) => s.setEditingItems)
-  const loadSample = useBill((s) => s.loadSample)
-  const startQuickSplit = useBill((s) => s.startQuickSplit)
-  const startScan = useUi((s) => s.startScan)
-  const currency = useBill((s) => s.bill.currency)
-  const setCurrency = useBill((s) => s.setCurrency)
   const drop = useDropToScan()
 
   const manual = (
@@ -76,36 +70,6 @@ function ChooseInput() {
       <div className="grid grid-cols-2 gap-3">
         {lastMethod === 'scan' ? [scan, manual] : [manual, scan]}
       </div>
-      <button
-        type="button"
-        onClick={startQuickSplit}
-        className="flex min-h-14 items-center gap-3 rounded-2xl border border-dashed border-line px-4 text-left transition hover:border-brand"
-      >
-        <span className="text-2xl" aria-hidden="true">
-          ➗
-        </span>
-        <span>
-          <span className="font-semibold">Just split it evenly</span>
-          <span className="block text-sm text-muted">Total, people, tip. Done.</span>
-        </span>
-      </button>
-      <button
-        type="button"
-        onClick={loadSample}
-        className="mx-auto min-h-11 px-3 font-medium text-brand-strong underline-offset-4 hover:underline"
-      >
-        Try a sample receipt →
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          if (currency !== 'USD') setCurrency('USD') // the sample receipt is in dollars
-          startScan({ source: renderSampleReceipt(), purpose: 'items' })
-        }}
-        className="mx-auto -mt-3 min-h-11 px-3 text-sm text-muted underline-offset-4 hover:underline"
-      >
-        or try scanning a sample photo
-      </button>
       <p className="hidden text-center text-xs text-muted sm:block">
         Tip: drop a photo on the scan card, or paste one with ⌘/Ctrl+V.
       </p>
@@ -334,7 +298,7 @@ function ReceiptTotals() {
           {row('Tax', adj.tax.mode === 'amount' ? adj.tax.value || null : null, (v) =>
             setAdjustments({ tax: { mode: 'amount', value: v ?? 0 } }),
           )}
-          {row('Service charge / auto-gratuity', adj.serviceCharge || null, (v) =>
+          {row('Gratuity / service charge', adj.serviceCharge || null, (v) =>
             setAdjustments({ serviceCharge: v ?? 0 }),
           )}
           {row('Discount', adj.discount || null, (v) => setAdjustments({ discount: v ?? 0 }))}

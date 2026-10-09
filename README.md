@@ -18,7 +18,6 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 
 - Open the **Local** URL Vite prints (usually http://localhost:5173).
 - To try it on your phone (including the camera), open the **Network** URL it prints while on the same Wi-Fi.
-- In a hurry? Tap **Try a sample receipt**, or **or try scanning a sample photo** to watch the on-device OCR work.
 
 ## Screenshots
 
@@ -35,26 +34,25 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 **The basics, done carefully**
 - Enter items by keyboard (Enter jumps to the next field), or **scan a receipt**: take a photo on your phone or upload one on any device (drag-and-drop and paste work too).
 - Add people, then tap chips to assign items. Tap several people to share an item, or use **custom shares** (2 parts : 1 part) when someone only had a bite.
-- Tax and tip as an amount or %, with 18/20/22% presets that show the dollar amount, tip before or after tax.
-- A summary card for each person, with an item-by-item breakdown.
+- Tax and tip as an amount or %, with 18/20/22% presets that show the dollar amount, tip before or after tax. Tax and any automatic gratuity on a scanned receipt are filled in for you, and you can still add an extra tip on top of a gratuity.
+- A summary card for each person, with an item-by-item breakdown. **Done — save to history** finishes the bill and takes you back to the start; tap the Tabby logo any time to start over (it asks first).
 
 **Product decisions** (all in [section 8 of the spec](TABBY_DESIGN.md#8-calculation-rules-the-product-decisions))
-- **Fair by default.** Tax and tip are split in proportion to what each person ordered, so the friend who "only had a salad" doesn't subsidize the steak. Flip to **Even** to see each person's difference.
+- **Fair by default.** Tax and tip are split in proportion to what each person ordered, so the friend who "only had a salad" doesn't subsidize the steak. Prefer to just split it? Choose **Evenly** on the Assign step, and each card shows the difference from a by-item split.
 - **Never off by a cent.** All money is stored as whole cents. Every split uses the largest-remainder method, so the totals always add up exactly ("✓ Adds up to $209.42 exactly").
 - Unassigned items are never silently spread across everyone; they're shown, with one-tap fixes.
 
 **For the table**
 - **Share link + QR code**: friends tap their name and see their total with a **Pay via Venmo / Cash App** button. There's no backend: the whole bill is compressed into the link, which works from the public site or over local Wi-Fi.
 - **Pass the phone**: "Hand to Alex" → Alex taps what they had → next person.
-- **Quick split**: just the total, the number of people and the tip. Done in three taps.
 - **🎂 Treat** someone (birthday!), **round everyone up** (the extra goes to the tip), mark who has **paid back**.
 - **Currency picker** for any currency the browser knows, including no-decimal (¥) and three-decimal (BHD) currencies.
-- Bill history, undo, dark mode, first-run tips, keyboard- and screen-reader-friendly controls, and a splash with a tabby-cat logo whose stripes are receipt lines.
+- Bill history, settings, undo, dark mode, first-run tips, keyboard- and screen-reader-friendly controls, and a splash with a tabby-cat logo whose stripes are receipt lines.
 
 **Receipt scanning, entirely on your device**
 - Tesseract.js runs in a Web Worker. Its files are served by the app itself, so nothing is uploaded and it works offline.
 - A crop step, then a tested parser that handles quantities, modifiers ("+ avocado"), discounts, service charges, OCR typos like `T0TAL`, and European or no-decimal formats.
-- A review screen highlights low-confidence lines and checks the items against the printed subtotal and total, offering "Add $11.00 as unlisted item" when something was missed.
+- A review screen highlights low-confidence lines and checks the items against the printed subtotal and total, offering "Add $11.00 as unlisted item" when something was missed. Tax and gratuity from the bottom of the receipt carry over to the Tax & tip step.
 
 ## Scripts
 
@@ -63,7 +61,7 @@ That's it: no API keys, no `.env`, no accounts, no extra downloads. Requires Nod
 | `npm run dev` | Start the dev server (also reachable on your local network) |
 | `npm run build` | Type-check and build to `dist/` |
 | `npm run preview` | Serve the production build |
-| `npm test` | Unit tests: money math, split rules, receipt parser, share links (58 tests) |
+| `npm test` | Unit tests: money math, split rules, receipt parser, share links, saved-data migration (59 tests) |
 | `npm run lint` | Lint with oxlint |
 
 ## How it's built
@@ -79,7 +77,7 @@ Every push to `main` runs the tests and deploys to GitHub Pages.
 Built end to end with **Claude Code**; no code was written by hand.
 
 1. **Spec first.** Claude drafted a design doc from the brief. I reviewed it over several rounds: I removed paid AI services, required zero setup, and chose the logo, license and features. It ended up as a self-contained spec a fresh session could build from.
-2. **Milestones.** Claude built M0–M7 in order, running build, tests and lint before each commit.
+2. **Milestones.** Claude built M0–M7 in order, running build, tests and lint before each commit. After I tried it, a round of feedback (M8) went back into the spec first and was then implemented: a simpler home screen, choosing "evenly" on the Assign step, tax and gratuity carried over from scans, a clear end to the flow, and a fix for menu items that wouldn't open.
 3. **Real-browser testing.** Claude drove Chrome to test each milestone and fixed what it found. That included two non-obvious OCR issues: a version mismatch between `tesseract.js` and its WASM core, and image "enhancement" that made OCR *worse* (reading went from ~14 s with junk characters to ~3 s and accurate). Both are recorded in the spec's decision log.
 
 The app itself uses no AI at runtime.

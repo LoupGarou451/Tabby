@@ -20,25 +20,19 @@ const item = z.object({
   price: money.positive(),
   quantity: z.number().int().min(1),
   shares: z.record(z.string(), z.number().int().min(0).max(10)),
-  source: z.enum(['manual', 'scan', 'sample']),
+  // 'sample' came from the removed in-app sample receipt; treat it as manual.
+  source: z.enum(['manual', 'scan', 'sample']).transform((v) => (v === 'sample' ? 'manual' : v)),
   confidence: z.number().optional(),
 })
 
 export const billSchema = z.object({
   schemaVersion: z.literal(1),
   id: z.string(),
-  mode: z.enum(['itemized', 'quick']),
+  splitMode: z.enum(['fair', 'even']).default('fair'),
   title: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   currency: z.string().length(3),
-  quick: z
-    .object({
-      total: money.nonnegative(),
-      tax: money.nonnegative(),
-      headcount: z.number().int().min(1),
-    })
-    .optional(),
   roundUp: z.boolean(),
   people: z.array(person),
   items: z.array(item),

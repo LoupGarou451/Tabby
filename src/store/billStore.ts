@@ -3,8 +3,7 @@ import { persist } from 'zustand/middleware'
 import { createBill, makeItem, makePerson, newId } from '../lib/bill'
 import { allocate, minorDigits } from '../lib/money'
 import { parseBill } from '../lib/schema'
-import type { Adjustments, Bill, Item, Person, QuickSplit } from '../lib/types'
-import { SAMPLE_PEOPLE, SAMPLE_TAX, SAMPLE_TOTAL, sampleItems } from '../sample/sampleBill'
+import type { Adjustments, Bill, Item, Person } from '../lib/types'
 import { usePrefs } from './prefsStore'
 
 const HISTORY_MAX = 20
@@ -22,12 +21,10 @@ interface BillState {
 }
 
 interface BillActions {
-  newBill: () => void
-  startQuickSplit: () => void
-  setQuick: (patch: Partial<QuickSplit>) => void
-  itemizeInstead: () => void
+  /** Archives the current bill (if it has items) and starts a fresh one. */
+  newBill: (undoMessage?: string) => void
+  setSplitMode: (mode: Bill['splitMode']) => void
   setRoundUp: (on: boolean) => void
-  loadSample: () => void
   setTitle: (title: string) => void
   setCurrency: (currency: string) => void
   addItem: (name: string, price: number, quantity?: number) => void
@@ -36,7 +33,6 @@ interface BillActions {
   expandItem: (id: string) => void
   addItems: (items: Item[], mode: 'append' | 'replace') => void
   addPerson: (name: string) => void
-  addSamplePeople: () => void
   updatePerson: (id: string, patch: Partial<Omit<Person, 'id'>>) => void
   removePerson: (id: string) => void
   toggleShare: (itemId: string, personId: string) => void
@@ -61,8 +57,7 @@ const freshBill = () => {
   return createBill({ currency, tipBps: defaultTipBps })
 }
 
-const isWorthKeeping = (b: Bill) =>
-  b.items.length > 0 || (b.mode === 'quick' && (b.quick?.total ?? 0) > 0)
+const isWorthKeeping = (b: Bill) => b.items.length > 0
 
 const archive = (bill: Bill, history: Bill[]) =>
   isWorthKeeping(bill)
@@ -103,40 +98,17 @@ export const useBill = create<BillState & BillActions>()(
         history: [],
         undo: null,
 
-        newBill: () => {
+        newBill: (undoMessage = 'Started a new bill') => {
           const { bill, history } = get()
           set({
             bill: freshBill(),
             history: archive(bill, history),
-            undo: isWorthKeeping(bill) ? { message: 'Started a new bill', bill, history } : null,
+            undo: isWorthKeeping(bill) ? { message: undoMessage, bill, history } : null,
           })
         },
+        setSplitMode: (mode) => change((b) => void (b.splitMode = mode)),
 
-        startQuickSplit: () =>
-          change((b) => {
-            b.mode = 'quick'
-            b.quick ??= { total: 0, tax: 0, headcount: Math.max(2, b.people.length) }
-          }),
-        setQuick: (patch) =>
-          change((b) => {
-            b.quick = { total: 0, tax: 0, headcount: 2, ...b.quick, ...patch }
-          }),
-        itemizeInstead: () =>
-          change((b) => {
-            b.mode = 'itemized'
-            if (b.quick?.tax) b.adjustments.tax = { mode: 'amount', value: b.quick.tax }
-            if (b.quick?.total) b.printedTotal = b.quick.total
-          }),
         setRoundUp: (on) => change((b) => void (b.roundUp = on)),
-
-        loadSample: () =>
-          change((b) => {
-            b.mode = 'itemized'
-            b.currency = 'USD'
-            b.items = sampleItems()
-            b.adjustments.tax = { mode: 'amount', value: SAMPLE_TAX }
-            b.printedTotal = SAMPLE_TOTAL
-          }, 'Loaded the sample receipt'),
 
         setTitle: (title) => change((b) => void (b.title = title)),
         setCurrency: (currency) => {
@@ -160,10 +132,6 @@ export const useBill = create<BillState & BillActions>()(
             a.serviceCharge = rescale(a.serviceCharge)
             a.discount = rescale(a.discount)
             if (b.printedTotal !== undefined) b.printedTotal = rescale(b.printedTotal)
-            if (b.quick) {
-              b.quick.total = rescale(b.quick.total)
-              b.quick.tax = rescale(b.quick.tax)
-            }
           })
           if (rounded) {
             const unit =
@@ -208,7 +176,6 @@ export const useBill = create<BillState & BillActions>()(
         addItems: (items, mode) =>
           change(
             (b) => {
-              b.mode = 'itemized'
               b.items = mode === 'replace' ? items : [...b.items, ...items]
             },
             mode === 'replace' ? 'Replaced items' : undefined,
@@ -219,13 +186,6 @@ export const useBill = create<BillState & BillActions>()(
             const used = new Set(b.people.map((p) => p.colorIndex))
             const color = [...Array(10).keys()].find((c) => !used.has(c)) ?? b.people.length % 10
             b.people.push(makePerson(uniqueName(name.trim(), b.people), color))
-          }),
-        addSamplePeople: () =>
-          change((b) => {
-            const have = new Set(b.people.map((p) => p.name))
-            SAMPLE_PEOPLE.filter((n) => !have.has(n)).forEach((n) =>
-              b.people.push(makePerson(n, b.people.length)),
-            )
           }),
         updatePerson: (id, patch) =>
           change((b) => {

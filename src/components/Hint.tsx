@@ -2,7 +2,7 @@ import { usePrefs } from '../store/prefsStore'
 import { useUi } from '../store/uiStore'
 
 const HINTS = {
-  'choose-input': 'Scan a receipt, type items in, or just split evenly — you can mix and match.',
+  'choose-input': 'Scan a receipt or type items in — you can mix and match.',
   'tap-chips': 'Tap people to assign. Tap more than one to share an item.',
   share: "Send everyone their total — they don't need the app.",
 } as const

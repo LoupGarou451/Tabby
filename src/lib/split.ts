@@ -50,15 +50,9 @@ function resolve(amount: Amount, base: Money): Money {
   return amount.mode === 'amount' ? amount.value : percentOf(base, amount.bps)
 }
 
-/** Bill-level amounts (section 8.1 step 4 / 8.2a), before round up. */
+/** Bill-level amounts (section 8.1 step 4), before round up. */
 export function billAmounts(bill: Bill): BillAmounts {
   const { adjustments: adj } = bill
-  if (bill.mode === 'quick') {
-    const total = bill.quick?.total ?? 0
-    const tax = Math.min(bill.quick?.tax ?? 0, total)
-    const tip = resolve(adj.tip, adj.tipBase === 'preTax' ? total - tax : total)
-    return { itemsSubtotal: total - tax, discount: 0, tax, tip, service: 0, billTotal: total + tip }
-  }
   const itemsSubtotal = bill.items.reduce((sum, i) => sum + i.price, 0)
   const discount = Math.min(adj.discount, itemsSubtotal)
   const tax = resolve(adj.tax, itemsSubtotal - discount)
@@ -94,29 +88,18 @@ function emptyPerson(personId: string, label: string): PersonSplit {
   }
 }
 
-/** Named people, or "Person 1…N" placeholders for a quick split with no names. */
-export function participants(bill: Bill): { id: string; label: string }[] {
-  if (bill.people.length > 0) return bill.people.map((p) => ({ id: p.id, label: p.name }))
-  if (bill.mode === 'quick') {
-    const n = Math.max(1, bill.quick?.headcount ?? 1)
-    return Array.from({ length: n }, (_, i) => ({ id: `guest-${i + 1}`, label: `Person ${i + 1}` }))
-  }
-  return []
-}
-
 /**
  * Computes what everyone owes. Pure and deterministic; every amount is an integer in
  * minor units and Σ people + unassigned === billTotal (see TABBY_DESIGN.md section 8).
  */
-export function computeSplit(bill: Bill, mode: SplitMode = 'fair'): SplitResult {
+export function computeSplit(bill: Bill, mode: SplitMode = bill.splitMode): SplitResult {
   const amounts = billAmounts(bill)
-  const parts = participants(bill)
-  const people = parts.map((p) => emptyPerson(p.id, p.label))
+  const people = bill.people.map((p) => emptyPerson(p.id, p.name))
   const index = new Map(people.map((p, i) => [p.personId, i]))
   const treated = new Set(bill.treatedIds.filter((id) => index.has(id)))
   const unassigned = { subtotal: 0, total: 0, itemIds: [] as string[] }
 
-  const fair = mode === 'fair' && bill.mode === 'itemized'
+  const fair = mode === 'fair'
 
   if (fair) {
     // Item shares (step 2).
@@ -177,7 +160,7 @@ export function computeSplit(bill: Bill, mode: SplitMode = 'fair'): SplitResult 
       })
     }
   } else {
-    // Even split (8.2) and quick split (8.2a): equal shares among non-treated people.
+    // Even split (8.2): equal shares among non-treated people.
     const payers = people.filter((p) => !treated.has(p.personId))
     const pool = payers.length ? payers : people
     if (pool.length) {

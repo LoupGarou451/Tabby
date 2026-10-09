@@ -10,7 +10,7 @@ export function usePasteToScan(enabled: boolean) {
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'))
       if (file) {
         e.preventDefault()
-        startScan({ source: file, purpose: 'items' })
+        startScan({ source: file })
       }
     }
     window.addEventListener('paste', onPaste)
@@ -34,7 +34,7 @@ export function useDropToScan() {
         e.preventDefault()
         setOver(false)
         const file = [...e.dataTransfer.files].find((f) => f.type.startsWith('image/'))
-        if (file) startScan({ source: file, purpose: 'items' })
+        if (file) startScan({ source: file })
       },
     },
   }

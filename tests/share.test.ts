@@ -13,15 +13,16 @@ describe('share links', () => {
   bill.paid = { x: true }
 
   it('round-trips a bill and drops private paid flags', () => {
-    const decoded = decodeShare(`#b=${encodeShare(bill, 'even', { venmo: 'ana' })}`)
+    bill.splitMode = 'even'
+    const decoded = decodeShare(`#b=${encodeShare(bill, { venmo: 'ana' })}`)
     expect(decoded?.bill.items[0].name).toBe('Pizza')
-    expect(decoded?.mode).toBe('even')
+    expect(decoded?.bill.splitMode).toBe('even')
     expect(decoded?.handles.venmo).toBe('ana')
     expect(decoded?.bill.paid).toEqual({})
   })
 
   it('keeps a typical dinner small enough for a QR code', async () => {
-    const { sampleItems } = await import('../src/sample/sampleBill')
+    const { sampleItems } = await import('./fixtures/sampleBill')
     const dinner = createBill()
     dinner.items = sampleItems()
     dinner.people = ['Alex', 'Sam', 'Priya', 'Jordan'].map(makePerson)
@@ -30,7 +31,7 @@ describe('share links', () => {
     )
     dinner.payerId = dinner.people[3].id
     dinner.treatedIds = [dinner.people[1].id]
-    const encoded = encodeShare(dinner, 'fair', { venmo: 'jordan' })
+    const encoded = encodeShare(dinner, { venmo: 'jordan' })
     expect(encoded.length).toBeLessThan(600)
     const back = decodeShare(`#b=${encoded}`)!
     const { computeSplit } = await import('../src/lib/split')

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Button } from '../components/ui'
 import { cx } from '../lib/cx'
 import { usePrefs } from '../store/prefsStore'
-import { useUi, type ScanRequest } from '../store/uiStore'
+import { useUi } from '../store/uiStore'
 
 const isTouch = () => matchMedia('(pointer: coarse)').matches
 
@@ -11,13 +11,7 @@ const isTouch = () => matchMedia('(pointer: coarse)').matches
  * the same scan pipeline. Desktop browsers ignore `capture`, so there the camera button would
  * only duplicate the file picker.
  */
-export function CaptureButtons({
-  purpose = 'items',
-  compact = false,
-}: {
-  purpose?: ScanRequest['purpose']
-  compact?: boolean
-}) {
+export function CaptureButtons({ compact = false }: { compact?: boolean }) {
   const startScan = useUi((s) => s.startScan)
   const setPrefs = usePrefs((s) => s.set)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -29,7 +23,7 @@ export function CaptureButtons({
     e.target.value = '' // allow picking the same file again
     if (!file) return
     setPrefs({ lastInputMethod: 'scan' })
-    startScan({ source: file, purpose })
+    startScan({ source: file })
   }
 
   return (

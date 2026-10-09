@@ -12,7 +12,7 @@ export interface Item {
   price: Money // line total (qty × unit), > 0
   quantity: number // integer ≥ 1
   shares: Record<string, number> // personId → weight (1–10); {} = unassigned
-  source: 'manual' | 'scan' | 'sample'
+  source: 'manual' | 'scan'
   confidence?: number // 0–100 from OCR
 }
 
@@ -26,21 +26,14 @@ export interface Adjustments {
   discount: Money
 }
 
-export interface QuickSplit {
-  total: Money // tax included
-  tax: Money // optional (0 = unknown); enables a pre-tax tip
-  headcount: number // used when no people are named
-}
-
 export interface Bill {
   schemaVersion: 1
   id: string
-  mode: 'itemized' | 'quick'
+  splitMode: 'fair' | 'even' // chosen on the Assign step
   title: string
   createdAt: string
   updatedAt: string
   currency: string
-  quick?: QuickSplit
   roundUp: boolean
   people: Person[]
   items: Item[]
