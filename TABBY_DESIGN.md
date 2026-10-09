@@ -597,8 +597,8 @@ For groups who don't want to itemize. It's the fastest path in the app: **three 
 │  People             [ − 4 + ]  or  Add names
 │  Tip   [18%] [20%] [22%] [Custom]    │
 ├──────────────────────────────────────┤
-│  Each person pays        $49.97      │  ← big, live-updating
-│  Total with tip $199.87              │
+│  Each person pays        $52.36      │  ← big, live-updating
+│  Total with tip $209.42 (2 pay $52.35)│
 │  [ Round up ]  [ Share ]  [ Itemize instead ] │
 └──────────────────────────────────────┘
 ```
@@ -607,7 +607,7 @@ For groups who don't want to itemize. It's the fastest path in the app: **three 
 - **Tip**: the same presets and base toggle as Step 4. When tax is blank, the tip is calculated on the total and a hint says "Add tax for a pre-tax tip".
 - **📷 Scan for total** (after M5): runs the normal scan pipeline but uses only the printed total (and tax, if found). It skips the item review.
 - **Itemize instead** converts to a normal itemized bill (`itemizeInstead()`), keeping people, tip, and currency, and goes to Step 1.
-- When people are anonymous, the result shows one amount, `allocate`d so that any leftover cent is noted: "3 pay $49.97, 1 pays $49.96". With names, it shows one card per person, like the Summary.
+- When people are anonymous, the result shows one amount, `allocate`d so that any leftover cent is noted: "2 pay $52.36, 2 pay $52.35". With names, it shows one card per person, like the Summary.
 - Share summary, share link + QR, and round up all work here too.
 - Math: section 8.2a.
 
