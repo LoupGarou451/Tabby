@@ -65,8 +65,35 @@
 A persistent bottom bar shows step progress and a live **"Unassigned: $X.XX"** counter so the user always knows what's left. Users can jump between steps; nothing is lost.
 
 ### Step 1 — Receipt
-- **Scan receipt** (primary button): camera/photo picker → on-device extraction → review (section 7).
-- **Enter manually**: fast-entry row — `name` · `price` · `qty` (default 1). Enter moves to the next row; prices accept `12`, `12.5`, `$12.50`.
+The step opens with a clear **choice of input method**: two large, equal-weight cards.
+
+```
+┌───────────────────────────┐  ┌───────────────────────────┐
+│  📷  Scan a receipt        │  │  ✏️  Enter manually        │
+│  Photo → items in seconds │  │  Type items and prices    │
+│ [ Take photo ] [ Upload ] │  │                           │
+└───────────────────────────┘  └───────────────────────────┘
+              Try a sample receipt →
+```
+
+**Scan a receipt** offers two capture options:
+
+| Option | Shown on | How it works |
+|---|---|---|
+| **Take photo** | Mobile / tablet (devices with a camera and touch screen) | `<input type="file" accept="image/*" capture="environment">` opens the rear camera directly. |
+| **Upload image** | All devices | `<input type="file" accept="image/*">` with *no* `capture` attribute, so it opens the photo library / file picker. On desktop, the card also accepts **drag-and-drop** and **paste** (⌘/Ctrl+V). |
+
+- **Device detection**: "Take photo" is shown when `matchMedia('(pointer: coarse)').matches` is true. Desktop browsers ignore `capture`, so a camera button there would just be a duplicate file picker. Desktop users get "Upload image" plus the drop zone instead.
+- Both options feed the same pipeline: crop → preprocess → OCR → review (section 7).
+
+**Enter manually** opens the fast-entry list: `name` · `price` · `qty` (default 1). Enter moves to the next row; prices accept `12`, `12.5`, `$12.50`.
+
+**Switching between methods** is always possible, and nothing is lost:
+- After either method, the item list shows **"+ Add item"** (manual) and **"📷 Scan more"** buttons, so users can mix methods. For example, they can scan the receipt, then type in a missed item, or scan a second page of a long receipt.
+- If items already exist when a new scan finishes, the review screen asks **"Add to current items"** (default) or **"Replace current items"**.
+- The last-used method is remembered (localStorage) and shown first next time, but both cards are always visible.
+
+Also on this step:
 - **Try a sample receipt**: loads demo data so reviewers can see the whole flow in 10 seconds.
 - Optional receipt-level fields: **Tax**, **Tip already included / service charge**, **Printed total** (used for reconciliation).
 
@@ -242,7 +269,7 @@ Built only after sections 2–6 work end to end, as the brief requires. It's pur
 Pick/take photo ─▶ Crop & straighten ─▶ Preprocess ─▶ OCR (Web Worker) ─▶ Line parser ─▶ Zod validate ─▶ Review screen ─▶ Items in bill
 ```
 
-1. **Capture**: `<input type="file" accept="image/*" capture="environment">` opens the rear camera on phones and a file picker on desktop. Drag-and-drop and paste also work.
+1. **Capture**: the user picks **Take photo** (camera, on mobile) or **Upload image** (file picker / photo library, any device; plus drag-and-drop and paste on desktop), as described in Step 1. Accepts JPEG, PNG, WebP, and HEIC where the browser can decode it. Unreadable files show a friendly error with a "Try another photo" / "Enter manually instead" choice.
 2. **Crop & rotate** (lightweight, hand-built): the photo appears with a draggable crop rectangle and a 90° rotate button. Trimming the table and background around the receipt is the biggest single accuracy gain for OCR. "Use whole image" skips this step.
 3. **Preprocess** with a plain `<canvas>` (no library):
    - apply the photo's orientation, then scale so the receipt is about 1500–2000 px tall (upscale small photos, downscale huge ones),
@@ -392,9 +419,9 @@ Each milestone ends in a working app and a commit.
 |---|---|---|
 | M0 | Scaffold + splash | Vite + React + TS + Tailwind; logo + splash; `npm install && npm run dev` works; repo public with LICENSE |
 | M1 | Money core | `money.ts` + `split.ts` with Vitest tests passing (invariants in 6.2) |
-| M2 | Manual flow | Steps 1–5 work end to end with manual entry, sample receipt, persistence |
+| M2 | Manual flow | Input-method choice screen; steps 1–5 work end to end with manual entry, sample receipt, persistence |
 | M3 | Assign UX | Custom weights, Everyone, split remaining, per-person mode, qty expansion |
-| M4 | **Image upload** | Crop → preprocess → on-device OCR → parse → review/reconcile; self-hosted assets |
+| M4 | **Image upload** | Take photo (mobile) + upload (all devices, drag/drop/paste) → crop → preprocess → on-device OCR → parse → review/reconcile; self-hosted assets |
 | M5 | Stand-outs | Fair vs Even, share link + QR, payment links, pass-the-phone |
 | M6 | Polish & submit | Dark mode, a11y pass, README, screenshots/recording, AI-tools note |
 
