@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useSplash } from './brand/useSplash'
 import { CurrencySheet } from './features/CurrencySheet'
+import { ScanFlow } from './scan/ScanFlow'
 import { AboutSheet, BottomBar, Header, MenuSheet, Snackbar } from './components/Shell'
 import { applyTheme, usePrefs } from './store/prefsStore'
 import { useUi } from './store/uiStore'
@@ -44,6 +45,7 @@ export default function App() {
       <MenuSheet />
       <AboutSheet />
       <CurrencySheet />
+      <ScanFlow />
     </div>
   )
 }

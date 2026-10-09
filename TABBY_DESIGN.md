@@ -284,7 +284,7 @@ Everything is free and open source (MIT / Apache-2.0) and bundled. **No API keys
 | Styling | `tailwindcss`, `@tailwindcss/vite` | 4 | v4 is configured in CSS (`@import "tailwindcss";` + `@theme`), **no `tailwind.config` file**. Dark mode via a `.dark` class on `<html>` (`@custom-variant dark`). |
 | State | `zustand` (+ `persist` middleware) | 5 | localStorage persistence |
 | Validation | `zod` | 4 | Share-link payloads, persisted state, parsed OCR output |
-| OCR | `tesseract.js`, `tesseract.js-core`, `@tesseract.js-data/eng` | 7 / 6 / 1 | Lazy-loaded; assets self-hosted (9.3) |
+| OCR | `tesseract.js`, `tesseract.js-core`, `@tesseract.js-data/eng` | 7 / 7 / 1 | Lazy-loaded; assets self-hosted (9.3) |
 | Asset serving | `vite-plugin-static-copy` | 4 | Serves OCR assets from `node_modules` in dev and build |
 | Share links | `lz-string` | 1 | `compressToEncodedURIComponent` |
 | QR codes | `qrcode` | 1 | Render to SVG string locally |
@@ -482,8 +482,8 @@ Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worke
 2. **Crop & rotate** (hand-built, no library): the photo appears full-width with a draggable crop rectangle (corner handles, 44 px touch targets) and a ↻ 90° button. **Use whole image** skips the crop. Trimming the table and background around the receipt is the biggest single accuracy gain.
 3. **Preprocess** with a plain `<canvas>` (`src/scan/preprocess.ts`):
    - load with `createImageBitmap(file, { imageOrientation: 'from-image' })` so EXIF rotation is applied,
-   - apply the crop and rotation, then scale so the long edge is 1600–2000 px,
-   - grayscale → contrast stretch (2nd–98th percentile) → adaptive threshold (mean of a ~31 px window, minus a small constant) to black-on-white.
+   - apply the rotation and crop, then scale so the long edge is 1600 px.
+   - **No thresholding or contrast enhancement.** Tesseract binarizes internally, and in testing it beat both a hand-rolled adaptive threshold (which turned paper texture into junk characters) and a contrast stretch (which dropped a line's confidence from 94% to 67%).
 4. **OCR** (`src/scan/ocr.ts`): `createWorker('eng', 1, { workerPath, corePath, langPath, logger })` from `tesseract.js`, with paths from 9.3. Set `tessedit_pageseg_mode` to `6` (single uniform block) and `preserve_interword_spaces` to `1`. A progress bar is driven by `logger` (`progress` 0–1), with a **Cancel** button that terminates the worker. Reuse the worker for later scans in the same session.
 5. **Parse** (`src/scan/parseReceipt.ts`, a pure function `parseReceipt(lines: {text, confidence}[], currency) → ReceiptDraft`, unit-tested on text fixtures):
    - **Price lines**: a trailing amount, `/^(.*?)[\s.]+[^\d-]?(-?\d{1,5}(?:[.,]\d{1,3})?)\s*[A-Z]{0,2}$/`, interpreted with the currency's decimals (for 2-decimal currencies, require exactly 2 decimals). The optional trailing letters cover tax-code flags like `T`, `F`, `TX`.
@@ -792,6 +792,9 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-08 | `npm test` runs `vitest run --passWithNoTests`. | Keeps M0 green before tests exist; harmless afterwards. |
 | 2026-10-08 | Current bill and history persist together under one key, `tabby:bill` (`{ bill, history }`), instead of separate `tabby:bill` / `tabby:history` keys. | One Zustand store, one `persist`; both are still Zod-validated on load. |
 | 2026-10-08 | "Recent names" come from a most-recent-first list of typed names (max 20, 8 shown), not strictly "the last 5 bills". Guests and sample people aren't remembered. | Simpler, and better matches who you actually eat with. |
+| 2026-10-09 | Preprocessing is crop + resize only (long edge 1600 px); the planned grayscale/contrast/adaptive-threshold steps were removed. | Measured on the sample receipt: thresholding produced junk text and took ~14 s; plain input read every line at 93–96% confidence in ~3 s. |
+| 2026-10-09 | The scan progress bar eases forward on a timer during recognition. | Tesseract only reports recognition progress at 0% and 100%. |
+| 2026-10-09 | `tesseract.js-core` must be the **same major as `tesseract.js`** (7). npm's `latest` tag for core still pointed at 6.x, which lacks the `relaxedsimd` build v7 loads. | Found in browser testing; pinned `^7.0.0`. |
 | 2026-10-08 | Duplicate names get their suffix when added ("Sam (2)"), stored in the name. | Keeps every label (chips, summary, share text) consistent without extra logic. |
 
 ---

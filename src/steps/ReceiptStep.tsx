@@ -6,10 +6,14 @@ import type { Item } from '../lib/types'
 import { useBill } from '../store/billStore'
 import { usePrefs } from '../store/prefsStore'
 import { useUi } from '../store/uiStore'
+import { renderSampleReceipt } from '../sample/renderReceipt'
+import { CaptureButtons } from '../scan/CaptureButtons'
+import { useDropToScan, usePasteToScan } from '../scan/scanHooks'
 
 export function ReceiptStep() {
   const items = useBill((s) => s.bill.items)
   const editing = useUi((s) => s.editingItems)
+  usePasteToScan(true)
   return items.length || editing ? <ItemsEditor /> : <ChooseInput />
 }
 
@@ -18,6 +22,10 @@ function ChooseInput() {
   const setPrefs = usePrefs((s) => s.set)
   const setEditing = useUi((s) => s.setEditingItems)
   const loadSample = useBill((s) => s.loadSample)
+  const startScan = useUi((s) => s.startScan)
+  const currency = useBill((s) => s.bill.currency)
+  const setCurrency = useBill((s) => s.setCurrency)
+  const drop = useDropToScan()
 
   const manual = (
     <button
@@ -39,13 +47,20 @@ function ChooseInput() {
   const scan = (
     <div
       key="scan"
-      className="flex min-h-40 flex-col items-start gap-2 rounded-2xl border border-line bg-surface p-4 opacity-60 shadow-sm"
+      {...drop.props}
+      className={cx(
+        'flex min-h-40 flex-col items-start gap-2 rounded-2xl border bg-surface p-4 shadow-sm transition',
+        drop.over ? 'border-brand ring-2 ring-brand/30' : 'border-line',
+      )}
     >
       <span className="text-3xl" aria-hidden="true">
         📷
       </span>
       <span className="font-bold">Scan a receipt</span>
-      <span className="text-sm text-muted">Coming soon</span>
+      <span className="text-sm text-muted">Photo → items in seconds</span>
+      <div className="mt-auto w-full">
+        <CaptureButtons />
+      </div>
     </div>
   )
 
@@ -65,6 +80,19 @@ function ChooseInput() {
       >
         Try a sample receipt →
       </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (currency !== 'USD') setCurrency('USD') // the sample receipt is in dollars
+          startScan({ source: renderSampleReceipt(), purpose: 'items' })
+        }}
+        className="mx-auto -mt-3 min-h-11 px-3 text-sm text-muted underline-offset-4 hover:underline"
+      >
+        or try scanning a sample photo
+      </button>
+      <p className="hidden text-center text-xs text-muted sm:block">
+        Tip: drop a photo on the scan card, or paste one with ⌘/Ctrl+V.
+      </p>
     </div>
   )
 }
@@ -100,13 +128,9 @@ function ItemsEditor() {
         <NewItemRow currency={currency} nameRef={newNameRef} autoFocus={items.length === 0} />
       </Card>
 
-      <div className="flex gap-2">
-        <Button className="flex-1" onClick={() => newNameRef.current?.focus()}>
-          + Add item
-        </Button>
-        <Button className="flex-1" disabled title="Receipt scanning is coming soon">
-          📷 Scan more
-        </Button>
+      <div className="flex flex-col gap-2">
+        <Button onClick={() => newNameRef.current?.focus()}>+ Add item</Button>
+        <CaptureButtons compact />
       </div>
 
       <ReceiptTotals />
