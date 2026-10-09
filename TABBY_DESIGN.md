@@ -19,7 +19,7 @@
 This document is the **single source of truth** for Tabby. A developer or AI session with no other context should be able to build the whole app from it. Everything needed is here, including the original brief (Appendix A).
 
 ### 0.1 Current repo state
-At the time of writing, the repo contains only `TABBY_DESIGN.md` (this file) and `.gitignore`. No application code exists yet. Work starts at milestone M0 (section 13).
+Implementation is in progress. Check `git log` (commits are prefixed `M0:`, `M1:`, …) to see which milestones are done, and continue with the next one in section 13.
 
 ### 0.2 Working rules for implementers
 1. **Build milestones in order** (M0 → M7). Each milestone must leave the app working end to end.
@@ -787,7 +787,9 @@ Implementers append here any decision made where this spec was silent (date · d
 
 | Date | Decision | Reason |
 |---|---|---|
-| — | — | — |
+| 2026-10-08 | Lint with **oxlint** (the current `create-vite` react-ts default) instead of ESLint; Prettier kept for formatting. TypeScript is the template's pinned version (~6.0). | Follow the official template; faster, zero config. |
+| 2026-10-08 | Logo ink stays dark (`#2B2118`) in dark mode; only the page background changes. | The ink sits on the logo's own orange and paper fills, so a light ink would lose contrast. |
+| 2026-10-08 | `npm test` runs `vitest run --passWithNoTests`. | Keeps M0 green before tests exist; harmless afterwards. |
 
 ---
 
