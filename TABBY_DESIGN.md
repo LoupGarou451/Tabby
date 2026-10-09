@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| **Status** | Approved for implementation — build **all** milestones (M0–M7), except items still listed in section 15 |
+| **Status** | Approved for implementation — build **all** milestones (M0–M7). No open questions. |
+| **Live app** | `https://loupgarou451.github.io/Tabby/` (deployed automatically from `main` once M0 is pushed; section 10.2) |
 | **Source brief** | *Take-Home Project: Split the Bill* — reproduced in full in Appendix A |
 | **Repo** | `https://github.com/LoupGarou451/Tabby` (public) |
 | **License** | MIT — `Copyright (c) 2026 Jeff Fulton` |
@@ -52,7 +53,7 @@ At the time of writing, the repo contains only `TABBY_DESIGN.md` (this file) and
 7. **Splash logo** shown briefly when the app opens (section 3).
 8. **Currency picker** (section 4).
 9. **Receipt image upload** → items, tax, tip, and total extracted **on-device**, then reviewed (section 9). Upload a file on any device, or take a photo with the camera on mobile.
-10. **Stand-out features** (section 10): Fair vs Even, share link + QR, pass-the-phone, payment links, Treat, penny-perfect badge, remaining meter, bill history, polish.
+10. **Stand-out features** (section 10): Fair vs Even, share link + QR (reachable on the local network and via a public GitHub Pages URL), pass-the-phone, payment links, Treat, penny-perfect badge, remaining meter, bill history, quick even split, round up, first-run hints, polish.
 
 ### 1.3 Constraints
 - **Zero setup.** The *only* thing a user does is:
@@ -124,7 +125,7 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
 ```
 
 ### Step 1 — Receipt
-The step opens with a clear **choice of input method**: two large, equal-weight cards.
+The step opens with a clear **choice of input method**: two large, equal-weight cards, plus a smaller third option for groups who don't want to itemize.
 
 ```
 ┌───────────────────────────┐  ┌───────────────────────────┐
@@ -132,9 +133,12 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 │  Photo → items in seconds │  │  Type items and prices    │
 │ [ Take photo ] [ Upload ] │  │                           │
 └───────────────────────────┘  └───────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  ➗  Just split it evenly — total, people, tip. Done.     │
+└──────────────────────────────────────────────────────────┘
               Try a sample receipt →
 ```
-(Until M5 ships, the Scan card shows "Coming soon" and is disabled.)
+(Until M5 ships, the Scan card shows "Coming soon" and is disabled. Until M6 ships, the even-split option is hidden.) **Just split it evenly** opens Quick Split (section 10.10).
 
 **Scan a receipt** offers two capture options:
 
@@ -193,6 +197,7 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 - Footer reconciliation: "✓ Adds up to $187.43 exactly" (10.6).
 - If anything is unassigned: a blocking banner — "$12.00 still unassigned" with **[Assign items]** and **[Split evenly among everyone]** buttons. Per-person totals are still shown, marked "so far".
 - **Fair / Even** segmented toggle (10.1).
+- **Round up** switch (10.11), off by default.
 - Actions:
   - **Share summary**: Web Share API where available, otherwise copy to clipboard. Text format:
     ```
@@ -323,13 +328,22 @@ interface Adjustments {
   discount: Money;           // coupons / comps (positive number, subtracted)
 }
 
+interface QuickSplit {        // section 10.10
+  total: Money;              // what's on the receipt, tax included
+  tax: Money;                // optional; 0 if unknown. Only used to compute a pre-tax tip
+  headcount: number;         // ≥ 1; used when no people are named
+}
+
 interface Bill {
   schemaVersion: 1;
   id: string;
+  mode: 'itemized' | 'quick';
   title: string;
   createdAt: string;         // ISO
   updatedAt: string;
   currency: string;          // ISO 4217 code
+  quick?: QuickSplit;        // present when mode === 'quick'
+  roundUp: boolean;          // section 10.11, default false
   people: Person[];
   items: Item[];
   adjustments: Adjustments;
@@ -347,6 +361,8 @@ interface Preferences {
   recentNames: string[];     // most recent first, max 20
   payHandles: { venmo?: string; cashtag?: string };
   theme: 'system' | 'light' | 'dark';
+  hintsSeen: string[];       // ids of first-run hints already dismissed (10.12)
+  shareTarget: 'public' | 'local'; // last choice in the share sheet (10.2)
 }
 ```
 
@@ -365,7 +381,7 @@ Persisted data is validated with Zod on load. If validation fails (corrupt data 
 
 Two Zustand stores: `useBill` (current bill + history) and `usePrefs`. Components call actions and never mutate state directly. They read derived numbers only from `computeSplit()` (memoized with `useMemo` on the bill).
 
-`useBill` actions: `newBill()`, `loadSample()`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
+`useBill` actions: `newBill()`, `startQuickSplit()`, `setQuick(partial)`, `itemizeInstead()` (switches a quick bill to itemized, keeping people, tip, and currency), `setRoundUp(bool)`, `loadSample()`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
 
 `newBill()` archives the current bill to history if it has at least one item, then starts a blank bill. It asks for confirmation only if the current bill has unsaved-looking data (items but no people assigned).
 
@@ -396,9 +412,17 @@ Let **assigned items** be items with at least one share weight > 0.
    - *Why pre-tax tip by default:* that's the etiquette convention; post-tax is one toggle away.
 6. **Treat** (10.5): for each treated person, their computed total is re-allocated across the non-treated people, in proportion to the non-treated people's totals, and the treated person's total becomes 0. If everyone is treated, the Treat toggle is disabled for the last person.
 7. **Per-person total** = subtotal − discount share + tax share + tip share + service share (+ treat redistribution).
+8. **Round up** (only when `bill.roundUp` is true; section 10.11): each non-treated person's total is raised to the next multiple of the **rounding unit**, and the difference is added to that person's tip share (`roundUpExtra`). `billTotal` and `tip` increase by the sum of the extras. A total already on a multiple is unchanged. The rounding unit is 1 major unit (100 minor units) for 2-decimal currencies, 1 000 for 3-decimal currencies, and 10 for 0-decimal currencies.
 
 ### 8.2 Even mode
-`personTotal = allocate(billTotal, [1, 1, …])` across non-treated people (treated people pay 0). Unassigned items don't matter in even mode. Used by the Fair/Even toggle.
+`personTotal = allocate(billTotal, [1, 1, …])` across non-treated people (treated people pay 0). Unassigned items don't matter in even mode. Used by the Fair/Even toggle. Round up (step 8) applies afterwards in the same way.
+
+### 8.2a Quick Split mode (`bill.mode === 'quick'`)
+- `participants` = named people if any, otherwise `headcount` anonymous shares ("Person 1…N").
+- `tipBase` = `quick.total − quick.tax` (pre-tax, the default) or `quick.total` (post-tax); `tip` follows the usual amount/percent rules.
+- `billTotal = quick.total + tip`.
+- Totals are `allocate(billTotal, [1, 1, …])` across non-treated participants, then round up (step 8) if it's on.
+- Items, discount, service charge, and the Fair/Even toggle don't apply (Fair = Even when there are no items).
 
 ### 8.3 SplitResult
 ```ts
@@ -411,6 +435,7 @@ interface SplitResult {
     items: Array<{ itemId: string; share: Money; fraction: [number, number] }>; // e.g. [1, 2] = ½
     subtotal: Money; discount: Money; tax: Money; tip: Money; service: Money;
     treatAdjustment: Money; // + for people covering, − for the treated person
+    roundUpExtra: Money;    // 0 unless round up is on; already included in tip
     total: Money;
   }>;
   reconciles: boolean; // Σ people totals + unassigned.total === billTotal
@@ -424,6 +449,8 @@ interface SplitResult {
 - In even mode, totals differ by at most 1 minor unit.
 - A person with no items pays 0 in fair mode (unless they're covering a treat).
 - Works for 0-, 2-, and 3-decimal currencies.
+- With round up on, every non-treated total is a multiple of the rounding unit, each `roundUpExtra` is in `[0, unit)`, and the sum invariant still holds.
+- Quick Split: totals differ by at most 1 minor unit (before rounding up) and sum to `billTotal`.
 
 ### 8.5 Decisions on ambiguous cases
 
@@ -488,7 +515,7 @@ By default, tesseract.js downloads its worker, WASM core, and language data from
 | English data (~3 MB, best_int) | `@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz` | `/tesseract/lang/eng.traineddata.gz` |
 
 - `vite-plugin-static-copy` in `vite.config.ts` copies these targets. It serves them during `npm run dev` and copies them into `dist/` on `npm run build`. Nothing is copied by hand, there are no `postinstall` scripts, and `public/` holds no OCR files.
-- `ocr.ts` sets `workerPath: '/tesseract/worker.min.js'`, `corePath: '/tesseract/core'`, `langPath: '/tesseract/lang'`, `gzip: true`.
+- `ocr.ts` sets `workerPath: BASE + 'tesseract/worker.min.js'`, `corePath: BASE + 'tesseract/core'`, `langPath: BASE + 'tesseract/lang'`, `gzip: true`, where `BASE = import.meta.env.BASE_URL` (`/` locally, `/Tabby/` on GitHub Pages; see 10.2).
 - First scan downloads ~7 MB from the local server (core + language data); the browser caches it afterwards. These assets load **only** on first scan; the main bundle is unaffected.
 - **Fallback** if the language-data package misbehaves: commit `eng.traineddata.gz` into `public/tesseract/lang/`. That still requires no setup.
 
@@ -503,7 +530,7 @@ The image is processed in memory and never stored or uploaded. A downscaled thum
 A segmented control on the Summary: **Fair** (default, section 8.1) / **Even** (8.2). In Even mode, each card shows the difference from Fair: "+$6.20 vs fair" in muted red, "−$14.20" in muted green. A one-line explainer under the toggle: "Fair = you pay for what you had, plus your share of tax & tip."
 
 ### 10.2 Share link + QR (no backend)
-- **Share link** button → serialize a *share payload* (the bill minus `paid`/history; names, items, amounts, currency, adjustments, treats, payer, and the payer's pay handles) → `lz-string` `compressToEncodedURIComponent` → `${origin}${pathname}#b=<data>`.
+- **Share link** button → serialize a *share payload* (the bill minus `paid`/history; names, items, amounts, currency, adjustments, treats, round up, quick-split data, payer, and the payer's pay handles) → `lz-string` `compressToEncodedURIComponent` → `<base URL>#b=<data>`, where `<base URL>` is chosen as described in **Reachability** below.
 - The **QR code** (generated locally with `qrcode`, as SVG) is shown in a sheet along with **Copy link** and **Share**. If the payload is too large for a QR code (> ~2,000 characters), only the link is offered, with a note.
 - **Opening a link** (`#b=` present) shows a **read-only Viewer**:
   1. "Who are you?" → a grid of name chips.
@@ -511,7 +538,25 @@ A segmented control on the Summary: **Fair** (default, section 8.1) / **Even** (
   3. "See everyone" expands all cards. **Save a copy to edit** imports the bill into the viewer's own storage (it doesn't overwrite their current bill without asking).
   - Payloads are Zod-validated; an invalid link shows "This link looks broken" with a button to open Tabby normally.
   - No splash on the viewer.
-- **Reachability**: see open item P1 (section 15). A link only works if the friend's phone can reach the URL the app is served from.
+#### Reachability (decided: local network + GitHub Pages)
+A link only works if the friend's phone can reach the URL it points to. `localhost` only works on the computer running the app, so Tabby offers two reachable targets.
+
+**1. Public — GitHub Pages (default when running locally)**
+- `.github/workflows/deploy.yml` builds the app and deploys it to GitHub Pages on every push to `main`, using the official `actions/configure-pages`, `actions/upload-pages-artifact`, and `actions/deploy-pages` actions. Pages is free for public repos.
+- Public URL: `https://loupgarou451.github.io/Tabby/`, stored once as `PUBLIC_URL` in `src/lib/share.ts`.
+- Vite `base` is `'/'` locally and `'/Tabby/'` in the Pages build. `vite.config.ts` picks it from `process.env.GITHUB_ACTIONS`, which GitHub sets automatically. All asset URLs, including the OCR paths in 9.3, are built from `import.meta.env.BASE_URL`, so they work under both.
+- **Privacy**: the bill lives in the `#hash` part of the URL, which browsers never send to the server. GitHub only serves the static app; it never sees bill data.
+- **One-time repo setting** (done by the implementer in M0, not by anyone cloning): enable Pages with source "GitHub Actions" — `gh api -X POST repos/LoupGarou451/Tabby/pages -f build_type=workflow`. Cloners don't need to do anything; this has no effect on `npm install && npm run dev`.
+
+**2. Local network (same Wi-Fi)**
+- `vite.config.ts` sets `server.host: true`, so the dev server is reachable from other devices on the LAN. Vite prints the "Network:" URL at startup.
+- At startup, `vite.config.ts` finds the first non-internal IPv4 address with `os.networkInterfaces()` and injects it as `__LAN_URL__` (e.g. `http://192.168.1.20:5173/`) via `define`. Still zero setup.
+- This is useful for trying the app on a phone during development (including the camera) and for sharing without internet.
+
+**Share sheet logic**
+- Running on a non-localhost origin (e.g. the Pages site or a LAN IP): link to the current `origin + pathname`. No choice is shown.
+- Running on `localhost`: a small toggle — **Anyone (public link)** [default] / **Same Wi-Fi only** — remembered in `prefs.shareTarget`. If no LAN address was found, the Wi-Fi option is disabled with a short explanation.
+- Share payloads carry `schemaVersion`, so the deployed app can reject (with a friendly message) links from an incompatible future version.
 
 ### 10.3 Pass-the-phone claim mode
 Started from Assign ("👋 Pass the phone"):
@@ -540,9 +585,54 @@ A progress bar at the top of Assign: "$142.00 of $154.00 assigned". It turns gre
 Menu → **History**: a list of past bills ("Friday dinner · $187.43 · 4 people · Oct 8"). Tap to open read/write; swipe or ✕ to delete (with Undo). The list holds up to 20 bills, dropping the oldest. History also feeds "Recent names" in People.
 
 ### 10.9 Settings
-Menu → **Settings**: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Clear all data** (with confirmation), About (version, MIT license, GitHub link).
+Menu → **Settings**: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Show tips again** (10.12), **Clear all data** (with confirmation), About (version, MIT license, GitHub link, public app link).
 
-### 10.10 Polish checklist (definition of done for M7)
+### 10.10 Quick Split ("Just split it evenly")
+For groups who don't want to itemize. It's the fastest path in the app: **three inputs, one screen**.
+
+```
+┌──────────────────────────────────────┐
+│  Total on receipt   [ $176.92 ] 📷   │  ← 📷 scans the receipt for just the total (M5+)
+│  Tax (optional)     [ $14.42  ]      │  ← enables a pre-tax tip
+│  People             [ − 4 + ]  or  Add names
+│  Tip   [18%] [20%] [22%] [Custom]    │
+├──────────────────────────────────────┤
+│  Each person pays        $49.97      │  ← big, live-updating
+│  Total with tip $199.87              │
+│  [ Round up ]  [ Share ]  [ Itemize instead ] │
+└──────────────────────────────────────┘
+```
+- Opened from the third option on Step 1. It replaces steps 2–5 with this single screen (the step dots are hidden).
+- **People**: a counter (default 2) for anonymous shares, or **Add names** to switch to the normal people list, which enables payment links, Paid ✓, and Treat.
+- **Tip**: the same presets and base toggle as Step 4. When tax is blank, the tip is calculated on the total and a hint says "Add tax for a pre-tax tip".
+- **📷 Scan for total** (after M5): runs the normal scan pipeline but uses only the printed total (and tax, if found). It skips the item review.
+- **Itemize instead** converts to a normal itemized bill (`itemizeInstead()`), keeping people, tip, and currency, and goes to Step 1.
+- When people are anonymous, the result shows one amount, `allocate`d so that any leftover cent is noted: "3 pay $49.97, 1 pays $49.96". With names, it shows one card per person, like the Summary.
+- Share summary, share link + QR, and round up all work here too.
+- Math: section 8.2a.
+
+### 10.11 Round up
+- A **Round up** switch on the Summary and on Quick Split. It's off by default, and its state is saved per bill.
+- When on, each person's total rounds **up** to the next whole unit (e.g. $41.37 → $42.00), and the extra goes to the tip (8.1 step 8). Nobody's total ever goes down.
+- Each card shows the new total, with "+$0.63 rounded up → tip" in the breakdown. The Summary footer shows the new bill total and how much extra tip the round-up added: "Tip $31.40 + $2.18 from rounding".
+- Treated people stay at 0.
+- Units: whole major unit for 2- and 3-decimal currencies; 10 for 0-decimal currencies (e.g. ¥1,234 → ¥1,240).
+
+### 10.12 First-run hints
+Three short, dismissible coach marks, shown once each, the first time their screen appears:
+
+| id | Where | Text |
+|---|---|---|
+| `choose-input` | Step 1 | "Scan a receipt, type items in, or just split evenly — you can mix and match." |
+| `tap-chips` | Step 3, anchored to the first item's chips | "Tap people to assign. Tap more than one to share an item." |
+| `share` | Step 5, anchored to the Share button | "Send everyone their total — they don't need the app." |
+
+- Each is a small callout with an arrow and a **Got it** button. Tapping anywhere outside it also dismisses it. Only one shows at a time.
+- Dismissed ids are saved in `prefs.hintsSeen`. **Settings → Show tips again** clears them.
+- Never shown in the shared-link Viewer, in pass-the-phone mode, or while a sheet is open.
+- Accessible: `role="dialog"`, `aria-live="polite"`, focusable **Got it**, Esc dismisses. Respects reduced motion.
+
+### 10.13 Polish checklist (definition of done for M7)
 - Mobile-first layout, thumb-reachable primary actions, **≥ 44 px tap targets**.
 - Dark mode following the system by default (restaurants are dim).
 - Undo snackbar for destructive actions.
@@ -553,7 +643,7 @@ Menu → **Settings**: Theme (System / Light / Dark), Default tip %, Payment han
 - Empty states for every step, with a single clear call to action.
 - No layout shift when the bottom bar's values change (tabular numerals).
 
-### 10.11 Out of scope (README "what I'd do with another hour" candidates)
+### 10.14 Out of scope (README "what I'd do with another hour" candidates)
 - PWA install + full offline caching (`vite-plugin-pwa`).
 - Automatic receipt edge detection and perspective correction instead of a manual crop.
 - "Who's drinking?" bulk select to assign all drinks to the drinkers in one tap.
@@ -591,9 +681,11 @@ Tabby/
 ├── TABBY_DESIGN.md          ← this document
 ├── README.md                ← getting started, features, screenshots, AI-tools note, "another hour", decision log link
 ├── LICENSE                  ← MIT, Copyright (c) 2026 Jeff Fulton
+├── .github/workflows/
+│   └── deploy.yml           ← build + deploy to GitHub Pages on push to main
 ├── index.html               ← inline splash markup + early-hide script
 ├── package.json
-├── vite.config.ts           ← react, tailwind, static-copy of tesseract assets
+├── vite.config.ts           ← react, tailwind, static-copy of tesseract assets, base path, server.host, __LAN_URL__
 ├── eslint.config.js
 ├── public/
 │   └── logo.svg             ← favicon / touch icon
@@ -616,7 +708,9 @@ Tabby/
 │   │   ├── ShareSheet.tsx
 │   │   ├── Viewer.tsx       ← read-only shared-link view
 │   │   ├── History.tsx
-│   │   └── Settings.tsx
+│   │   ├── Settings.tsx
+│   │   ├── QuickSplit.tsx   ← "Just split it evenly" screen
+│   │   └── Hint.tsx         ← first-run coach marks
 │   ├── components/          ← PersonChip, ItemCard, MoneyInput, Sheet, Snackbar, Meter, …
 │   ├── scan/
 │   │   ├── CropView.tsx
@@ -628,7 +722,7 @@ Tabby/
 │   ├── lib/
 │   │   ├── money.ts         ← allocate(), parseMoney(), formatMoney(), minorDigits()
 │   │   ├── split.ts         ← computeSplit()
-│   │   ├── share.ts         ← encode/decode share links, payment URLs
+│   │   ├── share.ts         ← encode/decode share links, PUBLIC_URL / LAN URL choice, payment URLs
 │   │   └── currencies.ts    ← Intl-based currency list + common list
 │   ├── store/
 │   │   ├── billStore.ts
@@ -651,14 +745,14 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; zero-setup check passes |
-| M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat) with tests for every invariant in 8.4 |
+| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; Pages workflow + Pages enabled, live URL serves the app; `server.host` + `__LAN_URL__`; zero-setup check passes |
+| M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat + round up + quick split) with tests for every invariant in 8.4 |
 | M2 | **Manual flow** | Shell (2.1); input-method choice (Scan card disabled "Coming soon"); steps 1–5 end to end with manual entry; sample bill; persistence; empty states |
 | M3 | **Currency picker** | Section 4 complete, including 0- and 3-decimal currencies, locale input parsing, and rounding notice |
 | M4 | **Assign UX** | Custom weights sheet, Everyone, Split remaining, By person, quantity expansion, remaining meter, undo |
 | M5 | **Receipt scanning** | Take photo (touch) + Upload (all; drag/drop/paste) → crop → preprocess → OCR → parse → review/reconcile; self-hosted assets; "Try scanning a sample"; parser tests |
-| M6 | **Stand-outs** | Fair vs Even, Treat, penny-perfect badge, share link + QR + Viewer, pass-the-phone, payment links, history, settings |
-| M7 | **Polish & submit** | Polish checklist (10.10); README complete (features, screenshots/GIF, AI-tools note, "another hour", decision log); fresh-clone zero-setup check (section 17) |
+| M6 | **Stand-outs** | Fair vs Even, Treat, round up, penny-perfect badge, share link + QR + Viewer (public + Wi-Fi targets), pass-the-phone, payment links, Quick Split (incl. scan for total), history, settings |
+| M7 | **Polish & submit** | First-run hints (10.12); polish checklist (10.13); verify a share link from the public URL opens on a phone; README complete (features, screenshots/GIF, AI-tools note, "another hour", decision log); fresh-clone zero-setup check (section 17) |
 
 ---
 
@@ -674,17 +768,16 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 | D6 | Setup | **Zero setup**: clone → `npm install && npm run dev` |
 | D7 | Input methods | User chooses **Scan** (Take photo on mobile / Upload on any device) or **Manual**; both can be mixed |
 | D8 | Repo visibility | **Public** (done in M0) |
+| D9 | Share-link reachability | **Both**: dev server on the local network with injected LAN URL, **and** automatic GitHub Pages deployment for a public URL (10.2) |
+| D10 | Quick "split evenly" mode | **Included** (10.10, 8.2a) |
+| D11 | Round up | **Included**, off by default (10.11, 8.1 step 8) |
+| D12 | First-run hints | **Included** (10.12) |
 
 ---
 
-## 15. Open Items (need an answer before the milestone noted)
+## 15. Open Items
 
-| # | Question | Proposed default | Needed by |
-|---|---|---|---|
-| P1 | **Share-link reachability.** The app runs on `localhost`, which friends' phones can't open, so share links and QR codes won't work as-is. Options: (a) make the dev server listen on the local network (`server.host: true`) and have Vite inject the computer's LAN address, so the QR points to e.g. `http://192.168.1.20:5173` — still zero setup; works for anyone on the same Wi-Fi. (b) additionally add an automatic, free **GitHub Pages** deployment (GitHub Actions) so there's a public URL anyone can open. | (a), plus (b) | M6 |
-| P2 | **Quick "Split evenly" express mode.** A third card on Step 1: enter just the total (or scan it) + number of people + tip → done in 3 taps, with no items. | Include | M6 |
-| P3 | **Round up** option on the Summary: round each person's total up to the nearest whole unit, with the extra going to the tip. | Include, off by default | M6 |
-| P4 | **First-run hints**: three dismissible coach marks (choose input → tap chips to assign → share). | Include | M7 |
+None. All questions are resolved (section 14). New questions that come up during implementation go here, with a proposed default and the milestone they block.
 
 ---
 
@@ -702,7 +795,7 @@ Implementers append here any decision made where this spec was silent (date · d
 
 - [ ] Public GitHub repo link
 - [ ] Screen recording or screenshots of the full flow (manual *and* scan, on a phone-sized viewport)
-- [ ] A few sentences on "what I'd do with another hour" (draw from 10.11)
+- [ ] A few sentences on "what I'd do with another hour" (draw from 10.14)
 - [ ] Note on AI tools used and how (Claude Code for all implementation; no AI or paid services inside the app)
 - [ ] **Zero-setup check:** fresh `git clone` into an empty folder → `npm install && npm run dev` → the full flow works, *including receipt scanning*, with no other steps, no `.env`, and no warnings asking for configuration
 - [ ] README's "Getting started" is exactly those commands, with nothing else required
