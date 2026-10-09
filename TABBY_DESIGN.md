@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Status** | **Implemented** — milestones M0–M7 complete (see `git log`). No open questions. |
+| **Status** | **Implemented** — milestones M0–M8 complete (see `git log`). No open questions. |
 | **Live app** | `https://loupgarou451.github.io/Tabby/` (deployed automatically from `main` once M0 is pushed; section 10.2) |
 | **Source brief** | *Take-Home Project: Split the Bill* — reproduced in full in Appendix A |
 | **Repo** | `https://github.com/LoupGarou451/Tabby` (public) |
@@ -19,7 +19,7 @@
 This document is the **single source of truth** for Tabby. A developer or AI session with no other context should be able to build the whole app from it. Everything needed is here, including the original brief (Appendix A).
 
 ### 0.1 Current repo state
-All milestones (M0–M7) are implemented; commits are prefixed `M0:` … `M7:`. Further work should follow the same rules: update this spec first, then build, and log decisions in section 16.
+All milestones (M0–M8) are implemented; commits are prefixed `M0:` … `M8:`. Further work should follow the same rules: update this spec first, then build, and log decisions in section 16.
 
 ### 0.2 Working rules for implementers
 1. **Build milestones in order** (M0 → M7). Each milestone must leave the app working end to end.
@@ -53,7 +53,7 @@ All milestones (M0–M7) are implemented; commits are prefixed `M0:` … `M7:`. 
 7. **Splash logo** shown briefly when the app opens (section 3).
 8. **Currency picker** (section 4).
 9. **Receipt image upload** → items, tax, tip, and total extracted **on-device**, then reviewed (section 9). Upload a file on any device, or take a photo with the camera on mobile.
-10. **Stand-out features** (section 10): Fair vs Even, share link + QR (reachable on the local network and via a public GitHub Pages URL), pass-the-phone, payment links, Treat, penny-perfect badge, remaining meter, bill history, quick even split, round up, first-run hints, polish.
+10. **Stand-out features** (section 10): Fair vs Even, share link + QR (reachable on the local network and via a public GitHub Pages URL), pass-the-phone, payment links, Treat, penny-perfect badge, remaining meter, bill history, round up, first-run hints, polish.
 
 ### 1.3 Constraints
 - **Zero setup.** The *only* thing a user does is:
@@ -101,7 +101,7 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
 ### 2.1 Shell
 ```
 ┌─────────────────────────────────────────┐
-│ 🐱 Tabby   [Friday dinner ✎]  [USD ▾] ☰ │  ← header: logo, editable bill title, currency chip, menu
+│ [🐱 Tabby]                    [USD ▾] ☰ │  ← header: logo + "Tabby" (tap → start over), currency chip, menu
 ├─────────────────────────────────────────┤
 │                                         │
 │            (current step)               │
@@ -111,8 +111,11 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
 │ ● ● ○ ○ ○  Receipt·People·Assign·Tip·Sum │  ← step dots (tappable)
 └─────────────────────────────────────────┘
 ```
-- **Header menu (☰)**: New bill · Bill history · Settings · About (version, license, GitHub link).
-- **Bill title**: defaults to `"<Weekday> <meal>"` (e.g. "Friday dinner": breakfast before 11:00, lunch before 16:00, dinner otherwise). Tap to edit.
+- **Header**: the logo and the word **"Tabby"** — nothing about the meal. Tapping either is the "home" gesture:
+  - If the current bill has anything in it (items or people), a confirmation sheet asks **"Start over?"** — "Your current receipt will be saved to Bill history." with **[Start over]** / **[Keep editing]**. Start over archives the bill to history (7) and returns to Step 1.
+  - If the bill is empty, it just returns to Step 1 (no prompt).
+- **Header menu (☰)**: New bill (same confirmation as above) · Bill history · Settings · About (version, license, GitHub link). Each item opens its sheet.
+- **Bill title**: not shown in the header. It defaults to a neutral date label — `"Bill · Oct 9"` — and is editable on the Summary (Step 5). It's used in history, share links, the share text, and payment notes.
 - **Steps are freely navigable** by tapping the dots. Nothing is lost when moving between steps.
 - **Primary action** is always bottom-right, within thumb reach.
 
@@ -124,8 +127,8 @@ Latest two major versions of iOS Safari, Android Chrome, and desktop Chrome, Edg
             └────────────┘   └────────────┘   └────────────┘   └────────────┘   └────────────┘
 ```
 
-### Step 1 — Receipt
-The step opens with a clear **choice of input method**: two large, equal-weight cards, plus a smaller third option for groups who don't want to itemize.
+### Step 1 — Receipt (the home screen)
+The step opens with a clear **choice of input method**: two large, equal-weight cards. There is no sample data and no separate "split evenly" entry point — how to split is decided on the Assign step (Step 3).
 
 ```
 ┌───────────────────────────┐  ┌───────────────────────────┐
@@ -133,12 +136,7 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 │  Photo → items in seconds │  │  Type items and prices    │
 │ [ Take photo ] [ Upload ] │  │                           │
 └───────────────────────────┘  └───────────────────────────┘
-┌──────────────────────────────────────────────────────────┐
-│  ➗  Just split it evenly — total, people, tip. Done.     │
-└──────────────────────────────────────────────────────────┘
-              Try a sample receipt →
 ```
-(Until M5 ships, the Scan card shows "Coming soon" and is disabled. Until M6 ships, the even-split option is hidden.) **Just split it evenly** opens Quick Split (section 10.10).
 
 **Scan a receipt** offers two capture options:
 
@@ -162,9 +160,7 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 - If items already exist when a new scan finishes, the review screen asks **"Add to current items"** (default) or **"Replace current items"**.
 - The last-used method is remembered and shown first next time (left card), but both cards are always visible.
 
-**Also on this step:**
-- **Try a sample receipt**: loads the sample bill (section 11) so anyone can see the whole flow in 10 seconds.
-- A collapsible **"Receipt totals (optional)"** panel: **Tax**, **Service charge / auto-gratuity**, **Discount**, **Printed total** (used for reconciliation). These are filled automatically by a scan.
+**Also on this step:** a collapsible **"Receipt totals (optional)"** panel: **Tax**, **Gratuity / service charge**, **Discount**, **Printed total** (used for reconciliation). A scan fills these in automatically, and they're the same values shown (and editable) on the Tax & tip step.
 
 ### Step 2 — People
 - Add by name (Enter adds and keeps focus). Each person gets an avatar chip: a color from a fixed 10-color palette (assigned in order, high contrast in both themes) + initials.
@@ -175,31 +171,46 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
 - Duplicate names are allowed but shown with a suffix ("Sam (2)") so chips stay distinguishable.
 
 ### Step 3 — Assign
+The step starts with **how to split** — the only place this choice is made:
+
+```
+How should we split it?
+[ By what each person had ]  [ Evenly ]
+```
+- **By what each person had** (default, "fair"): the item-assignment tools below.
+- **Evenly**: everyone pays an equal share of the whole bill (8.2). The item cards are replaced by a short explainer ("Everyone pays the same share of the total, including tax and tip"), and nothing needs assigning. Switching back keeps any assignments already made.
+- The choice is stored on the bill (`splitMode`), so it's saved, restored from history, and included in share links.
+
+When splitting by what each person had:
 - Each item is a card with the row of people chips beneath it. **Tap a chip to toggle** that person onto the item.
 - One person selected → they own it. Several → split evenly among them.
 - **Custom shares**: "⋯" on an item opens a sheet with a stepper per selected person (0–10 parts, default 1). For example, Alex 2 parts and Sam 1 part means Alex pays ⅔. The sheet live-previews each person's amount.
-- **Shortcuts** (top of the step):
+- **Shortcuts**:
   - **Everyone** on an item card: selects all people for that item.
-  - **Split remaining evenly**: assigns every unassigned item to everyone.
-  - **By person** toggle: pick one person, then tap all of *their* items. Faster for "I just had the salad".
+  - **Split remaining items evenly**: assigns every unassigned item to everyone.
+  - **By item / By person** toggle: in By person, pick one person, then tap all of *their* items. Faster for "I just had the salad".
+  - **Pass the phone** (10.3).
 - **Quantity expansion**: items with `quantity > 1` show "Split into N" on the card. "3 × Beer $18" becomes three "Beer" items at $6 each (using the largest-remainder method from section 8.1 if the amount doesn't divide evenly), so each can go to a different person.
 - **Remaining meter** (10.7) at the top: amount assigned / total, which turns green at 100%.
 
 ### Step 4 — Tax & Tip
-- **Tax**: amount (default, pre-filled from a scan) or percentage.
+- **Tax**: amount or percentage. **If the receipt (scan or the Receipt totals panel) has a tax line, it's pre-filled here** and labelled "From your receipt".
+- **Gratuity / service charge**: if the receipt includes one, it's **pre-filled here** as its own editable row ("Gratuity on the receipt"), labelled "From your receipt". It can also be added manually (an "+ Add gratuity / service charge" link).
 - **Tip**: preset buttons **18% / 20% / 22%**, each showing its resulting amount underneath (e.g. "20% · $31.40"). Also a custom % and a custom amount. Defaults to the user's preferred tip % from Settings (initially 20%).
+  - **When a gratuity is present**, this section is titled **"Additional tip"**, defaults to 0%, and shows: "Gratuity of $24.00 is already included. Add more if you'd like." The presets still work, so people can tip on top of the gratuity.
 - **Tip base** toggle: *pre-tax* (default) or *post-tax* (definitions in 8.1).
-- If a service charge / auto-gratuity is present, the tip defaults to 0% with a notice: "This receipt already includes a $24.00 service charge."
+- A summary row at the bottom: Tax · Gratuity · Tip · **Bill total**.
 - No tax or tip is valid (0).
 
 ### Step 5 — Summary
-- One card per person: **total owed** in large type, expandable breakdown (their items with share fractions such as "½ Nachos", then subtotal, discount, tax, tip, service).
+- **Bill name** at the top, editable in place (defaults to "Bill · Oct 9"; e.g. rename to "Friday dinner").
+- The split method chosen on Assign is shown as a label — "Split by what each person had" or "Split evenly" — with a **Change** link back to Step 3. In Even mode, each card shows the difference from a by-item split when every item is assigned (10.1).
+- One card per person: **total owed** in large type, expandable breakdown (their items with share fractions such as "½ Nachos", then subtotal, discount, tax, tip, gratuity).
 - Footer reconciliation: "✓ Adds up to $187.43 exactly" (10.6).
-- If anything is unassigned: a blocking banner — "$12.00 still unassigned" with **[Assign items]** and **[Split evenly among everyone]** buttons. Per-person totals are still shown, marked "so far".
-- **Fair / Even** segmented toggle (10.1).
+- If anything is unassigned (by-item mode): a blocking banner — "$12.00 still unassigned" with **[Assign items]** and **[Split evenly among everyone]** buttons. Per-person totals are still shown, marked "so far".
 - **Round up** switch (10.11), off by default.
 - Actions:
-  - **Share summary**: Web Share API where available, otherwise copy to clipboard. Text format:
+  - **Share link / QR** (10.2), **Share as text** (Web Share API where available, otherwise copy):
     ```
     Friday dinner — $187.43 total
     Alex   $52.10
@@ -207,7 +218,8 @@ The step opens with a clear **choice of input method**: two large, equal-weight 
     ...
     Split with Tabby
     ```
-  - **Share link / QR** (10.2), **Pay {payer}** buttons (10.4), and a **Paid ✓** checkbox per person (the payer is automatically checked).
+  - **Pay {payer}** buttons (10.4), and a **Paid back** checkbox per person.
+  - **✓ Done — save to history** (last, full width): completes the flow. It archives the bill to Bill history (10.8), starts a fresh bill, and returns to the home screen (Step 1), with a snackbar "Saved to history" + **Undo**.
 
 ---
 
@@ -314,7 +326,7 @@ interface Item {
   price: Money;          // line total (qty × unit), > 0
   quantity: number;      // integer ≥ 1, default 1
   shares: Record<string /* personId */, number /* weight, integer 1–10 */>; // {} = unassigned
-  source: 'manual' | 'scan' | 'sample';
+  source: 'manual' | 'scan';
   confidence?: number;   // 0–100 from OCR; < 70 → flagged for review
 }
 
@@ -328,21 +340,14 @@ interface Adjustments {
   discount: Money;           // coupons / comps (positive number, subtracted)
 }
 
-interface QuickSplit {        // section 10.10
-  total: Money;              // what's on the receipt, tax included
-  tax: Money;                // optional; 0 if unknown. Only used to compute a pre-tax tip
-  headcount: number;         // ≥ 1; used when no people are named
-}
-
 interface Bill {
   schemaVersion: 1;
   id: string;
-  mode: 'itemized' | 'quick';
-  title: string;
+  splitMode: 'fair' | 'even';  // chosen on Assign (Step 3); default 'fair'
+  title: string;               // default "Bill · Oct 9"; editable on Summary
   createdAt: string;         // ISO
   updatedAt: string;
   currency: string;          // ISO 4217 code
-  quick?: QuickSplit;        // present when mode === 'quick'
   roundUp: boolean;          // section 10.11, default false
   people: Person[];
   items: Item[];
@@ -367,11 +372,10 @@ interface Preferences {
 ```
 
 **Storage (localStorage, via Zustand `persist`):**
-- `tabby:bill` — the current bill.
-- `tabby:history` — up to 20 past bills (most recent first).
+- `tabby:bill` — the current bill and up to 20 past bills (`{ bill, history }`, see the decision log).
 - `tabby:prefs` — preferences.
 
-Persisted data is validated with Zod on load. If validation fails (corrupt data or an old schema with no migration), the app starts fresh rather than crashing, and logs to the console.
+Persisted data is validated with Zod on load (a missing `splitMode` from older saves defaults to `'fair'`). If validation fails (corrupt data or an old schema with no migration), the app starts fresh rather than crashing, and logs to the console.
 
 **Shares as weights** cover every case with one shape: solo `{ alex: 1 }`, even `{ alex: 1, sam: 1 }`, uneven `{ alex: 2, sam: 1 }`.
 
@@ -381,9 +385,9 @@ Persisted data is validated with Zod on load. If validation fails (corrupt data 
 
 Two Zustand stores: `useBill` (current bill + history) and `usePrefs`. Components call actions and never mutate state directly. They read derived numbers only from `computeSplit()` (memoized with `useMemo` on the bill).
 
-`useBill` actions: `newBill()`, `startQuickSplit()`, `setQuick(partial)`, `itemizeInstead()` (switches a quick bill to itemized, keeping people, tip, and currency), `setRoundUp(bool)`, `loadSample()`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
+`useBill` actions: `newBill()`, `setSplitMode('fair'|'even')`, `setRoundUp(bool)`, `setTitle`, `setCurrency`, `addItem`, `updateItem`, `removeItem`, `expandItem(id)`, `addItems(items, mode: 'append'|'replace')`, `addPerson`, `updatePerson`, `removePerson`, `toggleShare(itemId, personId)`, `setShareWeight(itemId, personId, w)`, `assignToEveryone(itemId)`, `splitRemainingEvenly()`, `setAdjustments(partial)`, `setPrintedTotal`, `setPayer`, `toggleTreat(personId)`, `togglePaid(personId)`, `openFromHistory(id)`, `deleteFromHistory(id)`, `importSharedBill(bill)`.
 
-`newBill()` archives the current bill to history if it has at least one item, then starts a blank bill. It asks for confirmation only if the current bill has unsaved-looking data (items but no people assigned).
+`newBill()` archives the current bill to history if it has at least one item, then starts a blank bill. The UI confirms first ("Start over?") whenever the bill has items or people; **Done — save to history** on the Summary calls it without a prompt, since that's the explicit end of the flow.
 
 **Undo**: a single-level undo for destructive actions (remove item, remove person, replace items, new bill), surfaced through a snackbar.
 
@@ -415,14 +419,7 @@ Let **assigned items** be items with at least one share weight > 0.
 8. **Round up** (only when `bill.roundUp` is true; section 10.11): each non-treated person's total is raised to the next multiple of the **rounding unit**, and the difference is added to that person's tip share (`roundUpExtra`). `billTotal` and `tip` increase by the sum of the extras. A total already on a multiple is unchanged. The rounding unit is 1 major unit (100 minor units) for 2-decimal currencies, 1 000 for 3-decimal currencies, and 10 for 0-decimal currencies.
 
 ### 8.2 Even mode
-`personTotal = allocate(billTotal, [1, 1, …])` across non-treated people (treated people pay 0). Unassigned items don't matter in even mode. Used by the Fair/Even toggle. Round up (step 8) applies afterwards in the same way.
-
-### 8.2a Quick Split mode (`bill.mode === 'quick'`)
-- `participants` = named people if any, otherwise `headcount` anonymous shares ("Person 1…N").
-- `tipBase` = `quick.total − quick.tax` (pre-tax, the default) or `quick.total` (post-tax); `tip` follows the usual amount/percent rules.
-- `billTotal = quick.total + tip`.
-- Totals are `allocate(billTotal, [1, 1, …])` across non-treated participants, then round up (step 8) if it's on.
-- Items, discount, service charge, and the Fair/Even toggle don't apply (Fair = Even when there are no items).
+`personTotal = allocate(billTotal, [1, 1, …])` across non-treated people (treated people pay 0). Unassigned items don't matter in even mode. Used when `bill.splitMode === 'even'` (chosen on Assign). Round up (step 8) applies afterwards in the same way.
 
 ### 8.3 SplitResult
 ```ts
@@ -450,7 +447,6 @@ interface SplitResult {
 - A person with no items pays 0 in fair mode (unless they're covering a treat).
 - Works for 0-, 2-, and 3-decimal currencies.
 - With round up on, every non-treated total is a multiple of the rounding unit, each `roundUpExtra` is in `[0, unit)`, and the sum invariant still holds.
-- Quick Split: totals differ by at most 1 minor unit (before rounding up) and sum to `billTotal`.
 
 ### 8.5 Decisions on ambiguous cases
 
@@ -462,7 +458,7 @@ interface SplitResult {
 | One person covers another (birthday) | **Treat** toggle (10.5). |
 | Leftover cent from rounding | Largest-remainder method; no one silently absorbs a penny. |
 | Scanned items don't add up to printed subtotal | Reconciliation banner shows the difference, with a one-tap "Add as 'Unlisted item'" fix. |
-| Tip already on the receipt | Treated as a service charge; tip defaults to 0%. |
+| Tip already on the receipt | Treated as a gratuity / service charge (pre-filled on Tax & tip); the additional tip defaults to 0% but can still be added. |
 | Discount larger than items | Capped at the items subtotal. |
 | Zero people or zero items | Steps can be skipped; the Summary shows an empty state with a clear next action ("Add people" / "Add items"). |
 | Person removed | Removed from all shares; any items left with no one become unassigned. |
@@ -493,11 +489,12 @@ Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worke
    - **Noise filtering**: drop lines with no price and lines matching card numbers (`\*{2,}\d{4}`), dates/times, phone numbers, `change`, `cash`, `visa|mastercard|amex|debit|credit`, `auth`, `table`, `server`, `guests`, `thank you`.
    - **Modifiers**: a line starting with `+` or indented more than its predecessor, with a price, is merged into the item above (name gets " + avocado", price is added).
    - **Confidence**: Tesseract's per-line confidence is copied onto each item; lines below 70 are flagged.
-6. **Validate & convert**: Zod schema → integer minor units → `Item[]` (`source: 'scan'`), plus tax, service charge, discount, and printed total.
+6. **Validate & convert**: Zod schema → integer minor units → `Item[]` (`source: 'scan'`), plus tax, service charge, discount, and printed total. Confirming the review writes tax and gratuity into the bill's adjustments, so they're **already filled in on the Tax & tip step** (Step 4).
 7. **Review screen** (always shown, never auto-committed):
    - Receipt thumbnail (tap to zoom) above or beside the editable item list.
    - Low-confidence rows highlighted in amber; one-tap delete for junk rows; inline edit for name and price.
    - **Reconciliation**: Σ items vs the printed subtotal (if found), and the computed bill total vs the printed total (if found). A green ✓ when they match; otherwise an amber banner with the difference and quick fixes: **Add as "Unlisted item"** / **Edit items**.
+   - **"From the bottom of the receipt"** card (formerly an unclear "Also found"): lists any subtotal, tax, gratuity / service charge, tip, discount, and total that were read, with the caption **"These fill in the Tax & tip step and are used to check the math above."** Hidden when none were found.
    - **Add to current items** / **Replace current items** (only when items already exist).
    - **Looks good →** goes to **People**, or to **Assign** if people already exist.
    - If OCR finds no price lines at all: "We couldn't find any items on this receipt", with **Try again** / **Enter manually**.
@@ -526,11 +523,11 @@ The image is processed in memory and never stored or uploaded. A downscaled thum
 
 ## 10. Stand-Out Features (all in scope)
 
-### 10.1 Fair vs. Even toggle
-A segmented control on the Summary: **Fair** (default, section 8.1) / **Even** (8.2). In Even mode, each card shows the difference from Fair: "+$6.20 vs fair" in muted red, "−$14.20" in muted green. A one-line explainer under the toggle: "Fair = you pay for what you had, plus your share of tax & tip."
+### 10.1 Fair vs. Even
+The choice lives on the **Assign step** (Step 3): *By what each person had* (fair, 8.1) or *Evenly* (8.2), stored on the bill as `splitMode`. The Summary shows which one is in use with a **Change** link. In Even mode — when every item is also assigned — each card shows the difference from a by-item split: "+$6.20 vs by item" in muted red, "−$14.20" in muted green, so the group can see who's subsidizing whom.
 
 ### 10.2 Share link + QR (no backend)
-- **Share link** button → serialize a *share payload* (the bill minus `paid`/history; names, items, amounts, currency, adjustments, treats, round up, quick-split data, payer, and the payer's pay handles) → `lz-string` `compressToEncodedURIComponent` → `<base URL>#b=<data>`, where `<base URL>` is chosen as described in **Reachability** below.
+- **Share link** button → serialize a *share payload* (the bill minus `paid`/history; names, items, amounts, currency, adjustments, split mode, treats, round up, payer, and the payer's pay handles) → `lz-string` `compressToEncodedURIComponent` → `<base URL>#b=<data>`, where `<base URL>` is chosen as described in **Reachability** below.
 - The **QR code** (generated locally with `qrcode`, as SVG) is shown in a sheet along with **Copy link** and **Share**. If the payload is too large for a QR code (> ~2,000 characters), only the link is offered, with a note.
 - **Opening a link** (`#b=` present) shows a **read-only Viewer**:
   1. "Who are you?" → a grid of name chips.
@@ -583,37 +580,18 @@ The Summary footer reads "✓ Adds up to $187.43 exactly" when `reconciles` is t
 A progress bar at the top of Assign: "$142.00 of $154.00 assigned". It turns green with a ✓ at 100%.
 
 ### 10.8 Bill history
-Menu → **History**: a list of past bills ("Friday dinner · $187.43 · 4 people · Oct 8"). Tap to open read/write; swipe or ✕ to delete (with Undo). The list holds up to 20 bills, dropping the oldest. History also feeds "Recent names" in People.
+Menu → **Bill history** opens a sheet listing past bills ("Friday dinner · $187.43 · 4 people · Oct 8"). Bills get here via **Done — save to history** on the Summary, or **Start over** / **New bill**. Tap one to reopen it on its Summary (the current bill, if non-empty, is archived in its place); ✕ deletes (with Undo). The list holds up to 20 bills, dropping the oldest. History also feeds "Recent names" in People.
 
 ### 10.9 Settings
-Menu → **Settings**: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Show tips again** (10.12), **Clear all data** (with confirmation), About (version, MIT license, GitHub link, public app link).
+Menu → **Settings** opens a sheet: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Show tips again** (10.12), **Clear all data** (with confirmation), and a link to **About**. Menu → **About Tabby** opens a sheet with the logo, version, MIT license, GitHub link, and public app link.
 
-### 10.10 Quick Split ("Just split it evenly")
-For groups who don't want to itemize. It's the fastest path in the app: **three inputs, one screen**.
+*Implementation note:* opening one sheet from another (menu → history) must not let the closing sheet's `close` event dismiss the new one. Sheets only report a user-initiated close (Esc / backdrop / ✕).
 
-```
-┌──────────────────────────────────────┐
-│  Total on receipt   [ $176.92 ] 📷   │  ← 📷 scans the receipt for just the total (M5+)
-│  Tax (optional)     [ $14.42  ]      │  ← enables a pre-tax tip
-│  People             [ − 4 + ]  or  Add names
-│  Tip   [18%] [20%] [22%] [Custom]    │
-├──────────────────────────────────────┤
-│  Each person pays        $52.36      │  ← big, live-updating
-│  Total with tip $209.42 (2 pay $52.35)│
-│  [ Round up ]  [ Share ]  [ Itemize instead ] │
-└──────────────────────────────────────┘
-```
-- Opened from the third option on Step 1. It replaces steps 2–5 with this single screen (the step dots are hidden).
-- **People**: a counter (default 2) for anonymous shares, or **Add names** to switch to the normal people list, which enables payment links, Paid ✓, and Treat.
-- **Tip**: the same presets and base toggle as Step 4. When tax is blank, the tip is calculated on the total and a hint says "Add tax for a pre-tax tip".
-- **📷 Scan for total** (after M5): runs the normal scan pipeline but uses only the printed total (and tax, if found). It skips the item review.
-- **Itemize instead** converts to a normal itemized bill (`itemizeInstead()`), keeping people, tip, and currency, and goes to Step 1.
-- When people are anonymous, the result shows one amount, `allocate`d so that any leftover cent is noted: "2 pay $52.36, 2 pay $52.35". With names, it shows one card per person, like the Summary.
-- Share summary, share link + QR, and round up all work here too.
-- Math: section 8.2a.
+### 10.10 (Removed) Quick Split
+A separate "Just split it evenly" screen was built in M6 and **removed in M8** at the user's request: having both it and per-item splitting on the home screen was confusing. Even splitting now lives on the Assign step (10.1).
 
 ### 10.11 Round up
-- A **Round up** switch on the Summary and on Quick Split. It's off by default, and its state is saved per bill.
+- A **Round up** switch on the Summary. It's off by default, and its state is saved per bill.
 - When on, each person's total rounds **up** to the next whole unit (e.g. $41.37 → $42.00), and the extra goes to the tip (8.1 step 8). Nobody's total ever goes down.
 - Each card shows the new total, with "+$0.63 rounded up → tip" in the breakdown. The Summary footer shows the new bill total and how much extra tip the round-up added: "Tip $31.40 + $2.18 from rounding".
 - Treated people stay at 0.
@@ -624,7 +602,7 @@ Three short, dismissible coach marks, shown once each, the first time their scre
 
 | id | Where | Text |
 |---|---|---|
-| `choose-input` | Step 1 | "Scan a receipt, type items in, or just split evenly — you can mix and match." |
+| `choose-input` | Step 1 | "Scan a receipt or type items in — you can mix and match." |
 | `tap-chips` | Step 3, anchored to the first item's chips | "Tap people to assign. Tap more than one to share an item." |
 | `share` | Step 5, anchored to the Share button | "Send everyone their total — they don't need the app." |
 
@@ -653,9 +631,9 @@ Three short, dismissible coach marks, shown once each, the first time their scre
 
 ---
 
-## 11. Sample Receipt
+## 11. Sample Receipt (tests only)
 
-`src/sample/sampleBill.ts` exports the sample used by **Try a sample receipt** and by tests:
+There is **no sample data in the app** (removed in M8 — users try the real flow). `tests/fixtures/sampleBill.ts` holds the receipt below for unit tests:
 
 | Item | Qty | Price |
 |---|---|---|
@@ -669,9 +647,6 @@ Three short, dismissible coach marks, shown once each, the first time their scre
 | Tiramisu | 1 | 11.00 |
 
 Subtotal 162.50 · Tax 14.42 (8.875%) · Printed total 176.92 · Currency USD.
-The sample loads **items only**. People and assignments are left for the user to try, but the People step offers a **"Add sample people"** chip (Alex, Sam, Priya, Jordan).
-
-The scanner's **"Try scanning a sample"** link renders this same receipt as an image at runtime (`src/sample/renderReceipt.ts` draws monospace text onto a canvas, adding slight rotation and noise). That image goes through the real OCR pipeline, so there are no binary or copyrighted receipt images in the repo.
 
 ---
 
@@ -710,7 +685,6 @@ Tabby/
 │   │   ├── Viewer.tsx       ← read-only shared-link view
 │   │   ├── History.tsx
 │   │   ├── Settings.tsx
-│   │   ├── QuickSplit.tsx   ← "Just split it evenly" screen
 │   │   └── Hint.tsx         ← first-run coach marks
 │   ├── components/          ← PersonChip, ItemCard, MoneyInput, Sheet, Snackbar, Meter, …
 │   ├── scan/
@@ -728,10 +702,8 @@ Tabby/
 │   ├── store/
 │   │   ├── billStore.ts
 │   │   └── prefsStore.ts
-│   └── sample/
-│       ├── sampleBill.ts
-│       └── renderReceipt.ts
 └── tests/
+    ├── fixtures/sampleBill.ts  ← the sample receipt (section 11)
     ├── money.test.ts
     ├── split.test.ts
     ├── share.test.ts
@@ -754,6 +726,7 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 | M5 | **Receipt scanning** | Take photo (touch) + Upload (all; drag/drop/paste) → crop → preprocess → OCR → parse → review/reconcile; self-hosted assets; "Try scanning a sample"; parser tests |
 | M6 | **Stand-outs** | Fair vs Even, Treat, round up, penny-perfect badge, share link + QR + Viewer (public + Wi-Fi targets), pass-the-phone, payment links, Quick Split (incl. scan for total), history, settings |
 | M7 | **Polish & submit** | First-run hints (10.12); polish checklist (10.13); verify a share link from the public URL opens on a phone; README complete (features, screenshots/GIF, AI-tools note, "another hour", decision log); fresh-clone zero-setup check (section 17) |
+| M8 | **Feedback round 1** | All of section 14's D13–D20: neutral header that starts over (with confirmation), no sample data or Quick Split, split method chosen on Assign, clearer scan review, tax/gratuity pre-filled with an additional tip, working menu sheets, and Done → history → home |
 
 ---
 
@@ -770,9 +743,17 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 | D7 | Input methods | User chooses **Scan** (Take photo on mobile / Upload on any device) or **Manual**; both can be mixed |
 | D8 | Repo visibility | **Public** (done in M0) |
 | D9 | Share-link reachability | **Both**: dev server on the local network with injected LAN URL, **and** automatic GitHub Pages deployment for a public URL (10.2) |
-| D10 | Quick "split evenly" mode | **Included** (10.10, 8.2a) |
+| D10 | Quick "split evenly" mode | ~~Included~~ → **Removed in M8** (D15); even splitting moved to Assign |
 | D11 | Round up | **Included**, off by default (10.11, 8.1 step 8) |
 | D12 | First-run hints | **Included** (10.12) |
+| D13 | Header | Shows only the logo + "Tabby" (no meal name). Tapping it offers to **start over** (with confirmation); the bill name is edited on the Summary |
+| D14 | Sample data | **Removed** from the app (no "Try a sample receipt" / sample photo / sample people) |
+| D15 | Where to choose "evenly" vs "by item" | **Assign step only** (stored per bill); no separate Quick Split screen |
+| D16 | Scan review "Also found" | Renamed **"From the bottom of the receipt"** with a caption explaining what it's for |
+| D17 | Tax & gratuity from the receipt | **Pre-filled** on Tax & tip; gratuity shown as its own row, with an **Additional tip** on top |
+| D18 | Menu | Bill history, Settings, About **fixed** (they opened and immediately closed) |
+| D19 | Ending the flow | **Done — save to history** on the Summary archives the bill and returns home |
+| D20 | Default bill name | Neutral date label, "Bill · Oct 9" |
 
 ---
 
@@ -797,6 +778,8 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | M8 feedback round: D13–D20. Quick Split code, its data (`mode`, `quick`), and its share-link fields were removed rather than hidden; `splitMode` was added to the bill (old saves default to `'fair'`). | Keep one clear way to split; no dead code. |
+| 2026-10-09 | Root cause of the dead menu items: `Sheet` called `onClose` from the `<dialog>` `close` event even when the app itself closed it, so opening History from the menu immediately reset the open sheet. `Sheet` now reports only user-initiated closes. | Bug found via user feedback; the M6 browser pass only exercised "New bill". |
 | 2026-10-09 | Replaced `vite-plugin-static-copy` with a ~40-line plugin in `vite.config.ts`. | Found in the fresh-clone check: the plugin pulled in `chokidar` → `braces`, so `npm install` reported 3 high-severity advisories (dev-only, not exploitable here, and the suggested fix was a breaking downgrade). Now `npm install` reports 0 vulnerabilities. |
 | 2026-10-09 | LAN share links use the runtime port; ids and copying have insecure-context fallbacks. | Found in testing: the app crashed on load over `http://<LAN IP>` (`crypto.randomUUID` is secure-context only), and the Wi-Fi link hard-coded port 5173. |
 | 2026-10-09 | First-run hints render inline above their target (with an arrow) rather than as floating overlays. | Never covers content, no positioning code, works at any width. |
