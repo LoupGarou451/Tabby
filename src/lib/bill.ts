@@ -15,7 +15,7 @@ export function defaultTitle(date = new Date()): string {
   return `Bill · ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
 }
 
-export function createBill(opts: { currency?: string; tipBps?: number; now?: Date } = {}): Bill {
+export function createBill(opts: { currency?: string; now?: Date } = {}): Bill {
   const now = (opts.now ?? new Date()).toISOString()
   return {
     schemaVersion: 1,
@@ -30,7 +30,8 @@ export function createBill(opts: { currency?: string; tipBps?: number; now?: Dat
     items: [],
     adjustments: {
       tax: { mode: 'amount', value: 0 },
-      tip: { mode: 'percent', bps: opts.tipBps ?? 2000 },
+      // No tip until one is picked on Tax & tip, so earlier totals match the receipt.
+      tip: { mode: 'percent', bps: 0 },
       tipBase: 'preTax',
       serviceCharge: 0,
       discount: 0,

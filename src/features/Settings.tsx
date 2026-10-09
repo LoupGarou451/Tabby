@@ -40,7 +40,7 @@ export function SettingsSheet() {
         </section>
 
         <section className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-muted">Default tip for new bills</h3>
+          <h3 className="text-sm font-semibold text-muted">Suggested tip</h3>
           <label className="flex items-center gap-2">
             <input
               aria-label="Default tip percent"
@@ -56,6 +56,9 @@ export function SettingsSheet() {
             />
             <span>%</span>
           </label>
+          <p className="text-xs text-muted">
+            Highlighted on the Tax &amp; tip step. Bills start with no tip until you pick one.
+          </p>
         </section>
 
         <section className="flex flex-col gap-2">

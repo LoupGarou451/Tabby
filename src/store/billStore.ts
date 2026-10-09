@@ -53,8 +53,8 @@ interface BillActions {
 }
 
 const freshBill = () => {
-  const { currency, defaultTipBps } = usePrefs.getState()
-  return createBill({ currency, tipBps: defaultTipBps })
+  const { currency } = usePrefs.getState()
+  return createBill({ currency })
 }
 
 const isWorthKeeping = (b: Bill) => b.items.length > 0

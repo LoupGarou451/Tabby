@@ -1,6 +1,7 @@
 import { formatMoney, percentOf } from '../lib/money'
 import { cx } from '../lib/cx'
 import { useBill } from '../store/billStore'
+import { usePrefs } from '../store/prefsStore'
 import { AmountField } from './AmountField'
 import { Segmented } from './ui'
 
@@ -11,12 +12,21 @@ export function TipPicker({ tipBase }: { tipBase: number }) {
   const adj = useBill((s) => s.bill.adjustments)
   const currency = useBill((s) => s.bill.currency)
   const setAdjustments = useBill((s) => s.setAdjustments)
+  const suggested = usePrefs((s) => s.defaultTipBps)
   const fmt = (m: number) => formatMoney(m, currency)
+  // The suggested tip from Settings joins the presets if it isn't one already.
+  const presets =
+    TIP_PRESETS.includes(suggested) || suggested <= 0
+      ? TIP_PRESETS
+      : [...TIP_PRESETS, suggested].sort((a, b) => a - b)
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-2">
-        {TIP_PRESETS.map((bps) => {
+      <div
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${presets.length}, minmax(0, 1fr))` }}
+      >
+        {presets.map((bps) => {
           const active = adj.tip.mode === 'percent' && adj.tip.bps === bps
           return (
             <button
@@ -30,6 +40,16 @@ export function TipPicker({ tipBase }: { tipBase: number }) {
               )}
             >
               <span className="font-bold">{bps / 100}%</span>
+              {bps === suggested && (
+                <span
+                  className={cx(
+                    'text-[10px] font-semibold uppercase',
+                    !active && 'text-brand-strong',
+                  )}
+                >
+                  Suggested
+                </span>
+              )}
               <span className={cx('text-xs tabular-nums', !active && 'text-muted')}>
                 {fmt(percentOf(tipBase, bps))}
               </span>

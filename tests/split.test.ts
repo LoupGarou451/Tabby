@@ -24,6 +24,7 @@ function dinner(): Bill {
   const bill = createBill()
   bill.items = sampleItems()
   bill.adjustments.tax = { mode: 'amount', value: SAMPLE_TAX }
+  bill.adjustments.tip = { mode: 'percent', bps: 2000 }
   const [alex, sam, priya, jordan] = ['Alex', 'Sam', 'Priya', 'Jordan'].map(makePerson)
   bill.people = [alex, sam, priya, jordan]
   const [fries, burrata, pizza, steak, salad, wine, water, tiramisu] = bill.items
@@ -140,6 +141,18 @@ describe('computeSplit — treat', () => {
     const bill = dinner()
     bill.treatedIds = bill.people.map((p) => p.id)
     expectInvariants(computeSplit(bill))
+  })
+})
+
+describe('defaults', () => {
+  it('new bills add no tip until one is chosen', () => {
+    const bill = createBill()
+    bill.items = [makeItem('Item', 500)]
+    bill.people = ['A', 'B', 'C'].map(makePerson)
+    bill.people.forEach((p) => (bill.items[0].shares[p.id] = 1))
+    const r = computeSplit(bill)
+    expect(r.billTotal).toBe(500)
+    expect(r.people.map((p) => p.total)).toEqual([167, 167, 166])
   })
 })
 

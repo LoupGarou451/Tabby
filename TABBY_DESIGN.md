@@ -196,7 +196,7 @@ When splitting by what each person had:
 ### Step 4 — Tax & Tip
 - **Tax**: amount or percentage. **If the receipt (scan or the Receipt totals panel) has a tax line, it's pre-filled here** and labelled "From your receipt".
 - **Gratuity / service charge**: if the receipt includes one, it's **pre-filled here** as its own editable row ("Gratuity on the receipt"), labelled "From your receipt". It can also be added manually (an "+ Add gratuity / service charge" link).
-- **Tip**: preset buttons **18% / 20% / 22%**, each showing its resulting amount underneath (e.g. "20% · $31.40"). Also a custom % and a custom amount. Defaults to the user's preferred tip % from Settings (initially 20%).
+- **Tip**: preset buttons **18% / 20% / 22%**, each showing its resulting amount underneath (e.g. "20% · $31.40"). Also a custom % and a custom amount. **A new bill starts with no tip (0%)** — nothing is added until the user picks one here, so totals on earlier steps match the receipt. The user's **suggested tip** from Settings (initially 20%) is marked "Suggested" on its preset (added as an extra preset if it isn't 18/20/22%).
   - **When a gratuity is present**, this section is titled **"Additional tip"**, defaults to 0%, and shows: "Gratuity of $24.00 is already included. Add more if you'd like." The presets still work, so people can tip on top of the gratuity.
 - **Tip base** toggle: *pre-tax* (default) or *post-tax* (definitions in 8.1).
 - A summary row at the bottom: Tax · Gratuity · Tip · **Bill total**.
@@ -334,7 +334,7 @@ type Amount = { mode: 'amount'; value: Money } | { mode: 'percent'; bps: number 
 
 interface Adjustments {
   tax: Amount;               // default { mode: 'amount', value: 0 }
-  tip: Amount;               // default { mode: 'percent', bps: prefs.defaultTipBps }
+  tip: Amount;               // default { mode: 'percent', bps: 0 } — no tip until chosen on Step 4
   tipBase: 'preTax' | 'postTax';
   serviceCharge: Money;      // auto-gratuity printed on the receipt
   discount: Money;           // coupons / comps (positive number, subtracted)
@@ -361,7 +361,7 @@ interface Bill {
 interface Preferences {
   schemaVersion: 1;
   currency: string;          // last used, default 'USD'
-  defaultTipBps: number;     // default 2000
+  defaultTipBps: number;     // default 2000; the "Suggested" preset on Step 4 (not applied automatically)
   lastInputMethod: 'scan' | 'manual';
   recentNames: string[];     // most recent first, max 20
   payHandles: { venmo?: string; cashtag?: string };
@@ -583,7 +583,7 @@ A progress bar at the top of Assign: "$142.00 of $154.00 assigned". It turns gre
 Menu → **Bill history** opens a sheet listing past bills ("Friday dinner · $187.43 · 4 people · Oct 8"). Bills get here via **Done — save to history** on the Summary, or **Start over** / **New bill**. Tap one to reopen it on its Summary (the current bill, if non-empty, is archived in its place); ✕ deletes (with Undo). The list holds up to 20 bills, dropping the oldest. History also feeds "Recent names" in People.
 
 ### 10.9 Settings
-Menu → **Settings** opens a sheet: Theme (System / Light / Dark), Default tip %, Payment handles (Venmo, Cash App), **Show tips again** (10.12), **Clear all data** (with confirmation), and a link to **About**. Menu → **About Tabby** opens a sheet with the logo, version, MIT license, GitHub link, and public app link.
+Menu → **Settings** opens a sheet: Theme (System / Light / Dark), Suggested tip % (highlighted on Tax & tip, not applied automatically), Payment handles (Venmo, Cash App), **Show tips again** (10.12), **Clear all data** (with confirmation), and a link to **About**. Menu → **About Tabby** opens a sheet with the logo, version, MIT license, GitHub link, and public app link.
 
 *Implementation note:* opening one sheet from another (menu → history) must not let the closing sheet's `close` event dismiss the new one. Sheets only report a user-initiated close (Esc / backdrop / ✕).
 
@@ -754,6 +754,7 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 | D18 | Menu | Bill history, Settings, About **fixed** (they opened and immediately closed) |
 | D19 | Ending the flow | **Done — save to history** on the Summary archives the bill and returns home |
 | D20 | Default bill name | Neutral date label, "Bill · Oct 9" |
+| D21 | Default tip | **0%** on new bills; the Settings value is shown as a "Suggested" preset. Leftover cents in a split (e.g. $5 ÷ 3 = $1.67 / $1.67 / $1.66) stay as they are, without a note |
 
 ---
 
@@ -778,6 +779,7 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | New bills start at 0% tip (D21). | User report: a $5 item shared by 3 via pass-the-phone showed a $6.00 total — the split was right, but the 20% default tip had been applied silently before the Tax & tip step. |
 | 2026-10-09 | Canvas resizing in `preprocess.ts` uses `imageSmoothingQuality = 'high'`; a failure to load the OCR engine shows its own message ("Couldn't load the receipt reader…") instead of the generic error. | User report: a receipt that scanned before stopped working. The default ("low") resampling made OCR read the total "27.35" as "21.35", so the review flagged a $6.00 mismatch (verified at 1000–2400 px; "high" reads it correctly). A stopped dev server also makes the first scan fail, which previously looked like a generic bug. |
 | 2026-10-09 | M8 feedback round: D13–D20. Quick Split code, its data (`mode`, `quick`), and its share-link fields were removed rather than hidden; `splitMode` was added to the bill (old saves default to `'fair'`). | Keep one clear way to split; no dead code. |
 | 2026-10-09 | Root cause of the dead menu items: `Sheet` called `onClose` from the `<dialog>` `close` event even when the app itself closed it, so opening History from the menu immediately reset the open sheet. `Sheet` now reports only user-initiated closes. | Bug found via user feedback; the M6 browser pass only exercised "New bill". |
