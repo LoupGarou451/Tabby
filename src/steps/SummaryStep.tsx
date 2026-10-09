@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copyText } from '../lib/clipboard'
 import { Avatar, Button, Card, EmptyState, Segmented, Switch } from '../components/ui'
 import { Hint } from '../components/Hint'
 import { cx } from '../lib/cx'
@@ -316,7 +317,7 @@ function ShareSummaryButton() {
         if ((e as Error).name === 'AbortError') return
       }
     }
-    await navigator.clipboard?.writeText(text)
+    if (!(await copyText(text))) return
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

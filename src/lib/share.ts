@@ -157,13 +157,27 @@ export type ShareTarget = 'public' | 'local'
  * Where a share link should point. On a reachable origin (Pages, a LAN IP) that's just the
  * current page; on localhost it's the public site, or this machine's LAN address.
  */
+/** This machine's address on the local network, using the port the page was served from. */
+export function lanUrl(
+  loc: { protocol: string; port: string; pathname: string } = location,
+  host: string | null = __LAN_HOST__,
+): string | null {
+  return host ? `${loc.protocol}//${host}${loc.port ? `:${loc.port}` : ''}${loc.pathname}` : null
+}
+
 export function shareBase(
   target: ShareTarget,
-  loc: { hostname: string; origin: string; pathname: string } = location,
-  lanUrl: string | null = __LAN_URL__,
+  loc: {
+    hostname: string
+    origin: string
+    pathname: string
+    protocol: string
+    port: string
+  } = location,
+  lan: string | null = lanUrl(loc),
 ): { url: string; choice: boolean } {
   if (!isLocalHost(loc.hostname)) return { url: loc.origin + loc.pathname, choice: false }
-  return { url: target === 'local' && lanUrl ? lanUrl : PUBLIC_URL, choice: true }
+  return { url: target === 'local' && lan ? lan : PUBLIC_URL, choice: true }
 }
 
 export const shareUrl = (base: string, encoded: string) => `${base}#b=${encoded}`

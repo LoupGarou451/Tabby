@@ -285,7 +285,7 @@ Everything is free and open source (MIT / Apache-2.0) and bundled. **No API keys
 | State | `zustand` (+ `persist` middleware) | 5 | localStorage persistence |
 | Validation | `zod` | 4 | Share-link payloads, persisted state, parsed OCR output |
 | OCR | `tesseract.js`, `tesseract.js-core`, `@tesseract.js-data/eng` | 7 / 7 / 1 | Lazy-loaded; assets self-hosted (9.3) |
-| Asset serving | `vite-plugin-static-copy` | 4 | Serves OCR assets from `node_modules` in dev and build |
+| Asset serving | (none — a ~40-line plugin in `vite.config.ts`) | — | Serves OCR assets from `node_modules` in dev; emits them into the build |
 | Share links | `lz-string` | 1 | `compressToEncodedURIComponent` |
 | QR codes | `qrcode` | 1 | Render to SVG string locally |
 | Tests | `vitest` | 5 | Unit tests for pure logic |
@@ -514,7 +514,7 @@ By default, tesseract.js downloads its worker, WASM core, and language data from
 | WASM core (all variants; the library picks SIMD/LSTM at runtime) | `tesseract.js-core/tesseract-core*.wasm.js` and `*.wasm` | `/tesseract/core/` |
 | English data (~3 MB, best_int) | `@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz` | `/tesseract/lang/eng.traineddata.gz` |
 
-- `vite-plugin-static-copy` in `vite.config.ts` copies these targets. It serves them during `npm run dev` and copies them into `dist/` on `npm run build`. Nothing is copied by hand, there are no `postinstall` scripts, and `public/` holds no OCR files.
+- A small plugin in `vite.config.ts` (`ocrAssets()`) maps these paths to files in `node_modules`: dev-server middleware serves them during `npm run dev`, and `generateBundle` emits them into `dist/` on `npm run build`. Nothing is copied by hand, there are no `postinstall` scripts, and `public/` holds no OCR files.
 - `ocr.ts` sets `workerPath: BASE + 'tesseract/worker.min.js'`, `corePath: BASE + 'tesseract/core'`, `langPath: BASE + 'tesseract/lang'`, `gzip: true`, where `BASE = import.meta.env.BASE_URL` (`/` locally, `/Tabby/` on GitHub Pages; see 10.2).
 - First scan downloads ~7 MB from the local server (core + language data); the browser caches it afterwards. These assets load **only** on first scan; the main bundle is unaffected.
 - **Fallback** if the language-data package misbehaves: commit `eng.traineddata.gz` into `public/tesseract/lang/`. That still requires no setup.
@@ -550,7 +550,8 @@ A link only works if the friend's phone can reach the URL it points to. `localho
 
 **2. Local network (same Wi-Fi)**
 - `vite.config.ts` sets `server.host: true`, so the dev server is reachable from other devices on the LAN. Vite prints the "Network:" URL at startup.
-- At startup, `vite.config.ts` finds the first non-internal IPv4 address with `os.networkInterfaces()` and injects it as `__LAN_URL__` (e.g. `http://192.168.1.20:5173/`) via `define`. Still zero setup.
+- At startup, `vite.config.ts` finds the first non-internal IPv4 address with `os.networkInterfaces()` and injects it as `__LAN_HOST__` (e.g. `192.168.1.20`) via `define`. The app adds the port it's actually running on (`location.port`), since Vite picks another port when 5173 is busy. Still zero setup.
+- Plain `http://` on a LAN IP is not a secure context, so the app avoids secure-only APIs there: ids fall back from `crypto.randomUUID()` to `crypto.getRandomValues()`, and copying falls back from `navigator.clipboard` to `document.execCommand('copy')`.
 - This is useful for trying the app on a phone during development (including the camera) and for sharing without internet.
 
 **Share sheet logic**
@@ -685,7 +686,7 @@ Tabby/
 │   └── deploy.yml           ← build + deploy to GitHub Pages on push to main
 ├── index.html               ← inline splash markup + early-hide script
 ├── package.json
-├── vite.config.ts           ← react, tailwind, static-copy of tesseract assets, base path, server.host, __LAN_URL__
+├── vite.config.ts           ← react, tailwind, OCR-asset plugin, base path, server.host, __LAN_HOST__
 ├── eslint.config.js
 ├── public/
 │   └── logo.svg             ← favicon / touch icon
@@ -745,7 +746,7 @@ Each milestone ends with a working app, passing `build`/`test`/`lint`, and a pus
 
 | # | Milestone | Done when |
 |---|---|---|
-| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; Pages workflow + Pages enabled, live URL serves the app; `server.host` + `__LAN_URL__`; zero-setup check passes |
+| M0 | **Scaffold, license, splash** | Vite + React + TS + Tailwind v4 + ESLint/Prettier + Vitest; `LICENSE` (MIT, Jeff Fulton); logo SVG + favicon + splash (section 3); app shell placeholder; `engines` set; README "Getting started"; **repo made public**; Pages workflow + Pages enabled, live URL serves the app; `server.host` + `__LAN_HOST__`; zero-setup check passes |
 | M1 | **Money core** | `money.ts` (`allocate`, `parseMoney`, `formatMoney`, `minorDigits`) + `split.ts` (`computeSplit`, fair + even + treat + round up + quick split) with tests for every invariant in 8.4 |
 | M2 | **Manual flow** | Shell (2.1); input-method choice (Scan card disabled "Coming soon"); steps 1–5 end to end with manual entry; sample bill; persistence; empty states |
 | M3 | **Currency picker** | Section 4 complete, including 0- and 3-decimal currencies, locale input parsing, and rounding notice |
@@ -796,6 +797,8 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | Replaced `vite-plugin-static-copy` with a ~40-line plugin in `vite.config.ts`. | Found in the fresh-clone check: the plugin pulled in `chokidar` → `braces`, so `npm install` reported 3 high-severity advisories (dev-only, not exploitable here, and the suggested fix was a breaking downgrade). Now `npm install` reports 0 vulnerabilities. |
+| 2026-10-09 | LAN share links use the runtime port; ids and copying have insecure-context fallbacks. | Found in testing: the app crashed on load over `http://<LAN IP>` (`crypto.randomUUID` is secure-context only), and the Wi-Fi link hard-coded port 5173. |
 | 2026-10-09 | First-run hints render inline above their target (with an arrow) rather than as floating overlays. | Never covers content, no positioning code, works at any width. |
 | 2026-10-09 | `Button` renders a leading emoji in its own `aria-hidden` span. | Chrome dropped the space after some emoji, and screen readers shouldn't announce decorative icons. |
 | 2026-10-09 | The scan progress bar eases forward on a timer during recognition. | Tesseract only reports recognition progress at 0% and 100%. |

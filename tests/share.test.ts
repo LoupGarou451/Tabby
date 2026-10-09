@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.stubGlobal('__LAN_URL__', 'http://192.168.1.20:5173/')
+vi.stubGlobal('__LAN_HOST__', '192.168.1.20')
 
 const { createBill, makeItem, makePerson } = await import('../src/lib/bill')
-const { decodeShare, encodeShare, paymentLinks, PUBLIC_URL, shareBase, shareUrl } =
+const { decodeShare, encodeShare, lanUrl, paymentLinks, PUBLIC_URL, shareBase, shareUrl } =
   await import('../src/lib/share')
 
 describe('share links', () => {
@@ -47,13 +47,23 @@ describe('share links', () => {
   })
 
   it('points localhost links at the public site or the LAN', () => {
-    const local = { hostname: 'localhost', origin: 'http://localhost:5173', pathname: '/' }
+    const local = {
+      hostname: 'localhost',
+      origin: 'http://localhost:5173',
+      pathname: '/',
+      protocol: 'http:',
+      port: '5173',
+    }
     expect(shareBase('public', local).url).toBe(PUBLIC_URL)
-    expect(shareBase('local', local, 'http://192.168.1.20:5173/').url).toBe(
-      'http://192.168.1.20:5173/',
-    )
+    expect(shareBase('local', local).url).toBe('http://192.168.1.20:5173/') // stubbed host
     expect(shareBase('local', local, null).url).toBe(PUBLIC_URL)
     expect(shareBase('public', local).choice).toBe(true)
+  })
+
+  it('builds the LAN address from the port the app is actually running on', () => {
+    const loc = { protocol: 'http:', port: '5174', pathname: '/' }
+    expect(lanUrl(loc, '192.168.1.20')).toBe('http://192.168.1.20:5174/')
+    expect(lanUrl(loc, null)).toBeNull()
   })
 
   it('links to the current page on a reachable origin', () => {
@@ -61,6 +71,8 @@ describe('share links', () => {
       hostname: 'loupgarou451.github.io',
       origin: 'https://loupgarou451.github.io',
       pathname: '/Tabby/',
+      protocol: 'https:',
+      port: '',
     }
     expect(shareBase('local', pages)).toEqual({ url: PUBLIC_URL, choice: false })
     expect(shareUrl(PUBLIC_URL, 'abc')).toBe(`${PUBLIC_URL}#b=abc`)

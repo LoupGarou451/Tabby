@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copyText } from '../lib/clipboard'
 import { TipPicker } from '../components/TipPicker'
 import { Avatar, Button, Card, MoneyInput, Switch } from '../components/ui'
 import { formatMoney, formatPlain } from '../lib/money'
@@ -248,7 +249,7 @@ export function QuickSplit() {
                 // fall through to copy
               }
             }
-            await navigator.clipboard?.writeText(text)
+            if (!(await copyText(text))) return
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
           }}

@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { copyText } from '../lib/clipboard'
 import { useEffect, useMemo, useState } from 'react'
 import { Button, Segmented, Sheet } from '../components/ui'
 import { encodeShare, shareBase, shareUrl } from '../lib/share'
@@ -39,7 +40,7 @@ export function ShareSheet() {
   }, [url, tooBig])
 
   const copy = async () => {
-    await navigator.clipboard?.writeText(url)
+    if (!(await copyText(url))) return
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -69,7 +70,7 @@ export function ShareSheet() {
                 { value: 'local', label: 'Same Wi-Fi only' },
               ]}
             />
-            {target === 'local' && !__LAN_URL__ && (
+            {target === 'local' && !__LAN_HOST__ && (
               <p className="mt-2 text-xs text-warn">
                 This computer isn't on a network right now, so the public link is used instead.
               </p>

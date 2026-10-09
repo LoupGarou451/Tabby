@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { copyText } from '../lib/clipboard'
 import { Button } from '../components/ui'
 import { formatMoney, type Money } from '../lib/money'
 import { paymentLinks, type PayHandles } from '../lib/share'
@@ -40,7 +41,7 @@ export function PayButtons({
       <Button
         className="text-sm"
         onClick={async () => {
-          await navigator.clipboard?.writeText(request)
+          if (!(await copyText(request))) return
           setCopied(true)
           setTimeout(() => setCopied(false), 2000)
         }}

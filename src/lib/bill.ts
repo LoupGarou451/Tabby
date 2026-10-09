@@ -1,6 +1,14 @@
 import type { Bill, Item, Person } from './types'
 
-export const newId = () => crypto.randomUUID()
+/**
+ * Random id. crypto.randomUUID() only exists in secure contexts, and phones opening the dev
+ * server over the LAN (http://192.168.…) aren't one; getRandomValues works everywhere.
+ */
+export const newId = (): string =>
+  crypto.randomUUID?.() ??
+  Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) =>
+    b.toString(16).padStart(2, '0'),
+  ).join('')
 
 /** "Friday dinner": breakfast before 11:00, lunch before 16:00, dinner otherwise. */
 export function defaultTitle(date = new Date()): string {
