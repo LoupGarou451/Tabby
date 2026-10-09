@@ -501,6 +501,7 @@ Take photo / Upload ─▶ Crop & rotate ─▶ Preprocess ─▶ OCR (Web Worke
 7. **Review screen** (always shown, never auto-committed):
    - Receipt thumbnail (tap to zoom) above or beside the editable item list.
    - Low-confidence rows highlighted in amber; one-tap delete for junk rows; inline edit for name and price.
+   - **+ Add item** below the list (always available) adds a blank row, focused for typing, so items the scan missed can be entered right there. Rows left without a price are dropped when the review is confirmed; a blank name becomes `Item N`. The reconciliation check updates live as rows are added or edited.
    - **Reconciliation**: Σ items vs the printed subtotal (if found), and the computed bill total vs the printed total (if found). A green ✓ when they match; otherwise an amber banner with the difference and quick fixes: **Add as "Unlisted item"** / **Edit items**.
    - **"From the bottom of the receipt"** card (formerly an unclear "Also found"): lists any subtotal, tax, gratuity / service charge, tip, discount, and total that were read, with the caption **"These fill in the Tax & tip step and are used to check the math above."** Hidden when none were found.
    - **Add to current items** / **Replace current items** (only when items already exist).
@@ -790,6 +791,7 @@ Implementers append here any decision made where this spec was silent (date · d
 | 2026-10-09 | Share links use a compact positional format (names/colors as arrays, item shares as per-person weight arrays, ids regenerated on open) instead of the raw bill JSON. | The raw JSON made a typical 8-item, 4-person bill too long for a QR code; the compact form is ~475 characters. |
 | 2026-10-09 | The 🎂 Treat toggle lives on the Summary cards only (not also on People). | That's where its effect is visible; one place keeps People simple. |
 | 2026-10-09 | The payment-handles prompt sits below the person cards on the Summary. | Totals come first; payment setup is secondary. |
+| 2026-10-09 | Scan review gets **+ Add item** for entering items the scan missed. | User report: when the review showed a discrepancy, there was no way to add the missing entries manually (only the lump-sum "Unlisted item" fix). |
 | 2026-10-09 | Removed the Summary's "Receipt says $X — difference · Fix" warning and the manual "Printed total" field that fed it. | User report: a receipt with no printed tax showed "Receipt says $27.35 before tip — $4.10 difference" after the user correctly added $4.10 tax. The comparison can't tell user-added tax/gratuity from a missing item; item reconciliation stays on the scan review screen. |
 | 2026-10-09 | Step validation (D22): Next and later step dots are disabled until the current step has the minimum data for final totals. One person is enough (a bill for one is still calculable). | User report: it was possible to reach later steps with no items. |
 | 2026-10-09 | New bills start at 0% tip (D21). | User report: a $5 item shared by 3 via pass-the-phone showed a $6.00 total — the split was right, but the 20% default tip had been applied silently before the Tax & tip step. |

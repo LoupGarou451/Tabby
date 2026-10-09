@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button, Card, MoneyInput, Sheet } from '../components/ui'
 import { cx } from '../lib/cx'
-import { formatMoney, type Money } from '../lib/money'
+import { formatMoney, formatPlain, type Money } from '../lib/money'
 import { useBill } from '../store/billStore'
 import { useUi } from '../store/uiStore'
 import type { DraftItem, ReceiptDraft } from './parseReceipt'
@@ -37,11 +37,18 @@ export function ReviewScreen({
   const totalDiff = draft.total !== undefined ? draft.total - expectedTotal : undefined
   const matches = subtotalDiff === 0 || (subtotalDiff === undefined && totalDiff === 0)
   const missing = subtotalDiff ?? totalDiff ?? 0
+  const hasPriced = items.some((i) => i.price > 0)
   const flagged = items.filter((i) => i.confidence < LOW_CONFIDENCE).length
 
   const update = (key: number, patch: Partial<DraftItem>) =>
     setItems((list) => list.map((i) => (i.key === key ? { ...i, ...patch } : i)))
   const remove = (key: number) => setItems((list) => list.filter((i) => i.key !== key))
+  const [focusKey, setFocusKey] = useState<number | null>(null)
+  const addBlank = () => {
+    const key = Date.now()
+    setItems((list) => [...list, { key, name: '', quantity: 1, price: 0, confidence: 100 }])
+    setFocusKey(key)
+  }
   const addUnlisted = () =>
     setItems((list) => [
       ...list,
@@ -49,7 +56,11 @@ export function ReviewScreen({
     ])
 
   const commit = (mode: 'append' | 'replace') => {
-    const valid = items.filter((i) => i.price > 0)
+    // Rows without a price are dropped; a blank name gets a placeholder.
+    const start = mode === 'append' ? bill.items.length : 0
+    const valid = items
+      .filter((i) => i.price > 0)
+      .map((i, k) => ({ ...i, name: i.name.trim() || `Item ${start + k + 1}` }))
     addItems(draftToItems({ items: valid }), mode)
     const patch: Parameters<typeof setAdjustments>[0] = {}
     if (draft.tax !== undefined) patch.tax = { mode: 'amount', value: draft.tax }
@@ -133,6 +144,8 @@ export function ReviewScreen({
           >
             <input
               aria-label="Item name"
+              placeholder="Item name"
+              autoFocus={i.key === focusKey}
               value={i.name}
               onChange={(e) => update(i.key, { name: e.target.value })}
               className="min-h-11 min-w-0 rounded-xl border border-line bg-surface px-3 outline-none focus:border-brand"
@@ -147,10 +160,12 @@ export function ReviewScreen({
               className="min-h-11 w-full rounded-xl border border-line bg-surface text-center outline-none focus:border-brand"
             />
             <MoneyInput
-              aria-label={`Price of ${i.name}`}
-              value={i.price}
+              aria-label={`Price of ${i.name || 'new item'}`}
+              value={i.price || null}
+              allowEmpty
+              placeholder={formatPlain(0, bill.currency)}
               currency={bill.currency}
-              onCommit={(v) => v && update(i.key, { price: v })}
+              onCommit={(v) => update(i.key, { price: v ?? 0 })}
               className="w-full"
             />
             <Button
@@ -163,6 +178,9 @@ export function ReviewScreen({
             </Button>
           </div>
         ))}
+        <Button onClick={addBlank} className="mt-1">
+          + Add item
+        </Button>
       </Card>
 
       {totals.some(([, v]) => v !== undefined) && (
@@ -185,13 +203,25 @@ export function ReviewScreen({
 
       {bill.items.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <Button variant="primary" className="min-h-12" onClick={() => commit('append')}>
+          <Button
+            variant="primary"
+            className="min-h-12"
+            disabled={!hasPriced}
+            onClick={() => commit('append')}
+          >
             Add to current items →
           </Button>
-          <Button onClick={() => commit('replace')}>Replace current items</Button>
+          <Button disabled={!hasPriced} onClick={() => commit('replace')}>
+            Replace current items
+          </Button>
         </div>
       ) : (
-        <Button variant="primary" className="min-h-12" onClick={() => commit('replace')}>
+        <Button
+          variant="primary"
+          className="min-h-12"
+          disabled={!hasPriced}
+          onClick={() => commit('replace')}
+        >
           Looks good →
         </Button>
       )}
